@@ -12,6 +12,14 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+## Constitution Check (Must pass before Phase 1)
+
+- [ ] Single MVP: Exactly one working MVP planned
+- [ ] Channel: Output is a text message with a link
+- [ ] Simplicity: KISS + YAGNI enforced; only essentials
+- [ ] Integrations: No microservices; no extra vendors beyond text delivery
+- [ ] Ship-to-learn: Validation achievable within hackathon window
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)

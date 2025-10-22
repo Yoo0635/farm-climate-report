@@ -5,6 +5,13 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
+> Constitution Constraints (MVP):
+> - Ship exactly one working MVP in 48 hours
+> - Deliver via text message + link only
+> - Enforce KISS and YAGNI—omit non-essential features
+> - Avoid microservices and extra integrations/vendors
+> - Bias to ship for rapid learning/validation
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--

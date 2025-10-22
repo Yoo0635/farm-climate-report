@@ -31,7 +31,11 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Single MVP: Exactly one working MVP within the 48-hour window.
+- Channel: Deliver personalized farm action strategy via text + link only.
+- Simplicity: KISS and YAGNI—no abstractions or features not needed now.
+- Integrations: No microservices or extra vendors (one text provider max, or stub/manual).
+- Ship-to-learn: Prefer choices that ship sooner and enable validation.
 
 ## Project Structure
 
