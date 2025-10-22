@@ -3,7 +3,7 @@
 **Feature Branch**: `001-send-sms-brief`  
 **Created**: 2025-10-22  
 **Status**: Draft  
-**Input**: User description: "WHAT: A working MVP that sends a personalized 2-week farm action brief via SMS (Top-3 actions + timing + triggers + icon) and a single public detail link per brief; personalization axes: region · crop · growth stage. Each brief integrates climate and pest/disease signals into one message; after-event checklists are included in the detail page. Keyword replies (bi-directional): 1 = details, REPORT = latest brief, CHANGE = update profile, STOP = opt-out. Detail page shows: 3-line situation summary, date/trigger checklist, one “Plan B,” and named sources with year—clear, senior-friendly language. Scenarios to cover (at least three end-to-end): heatwave, multi-day rain, strong wind, low-temp swing, plus one high-value hard crop (e.g., ginseng/strawberry/tomato/grape) per chosen region. Trust & safety (content policy): no pesticide/medical directives; actions are observation/environment/work only; every action cites one source+year. Two-step delivery—concise SMS + link to depth—aligns with the user flow in the shared diagram. WHY: Reduce climate & pest risks by translating signals into “what to do, when,” cutting avoidable losses in sensitive, high-value crops. Stabilize income through timely mitigation and better quality/yield decisions. Bridge the digital divide for seniors and low-access users with SMS-first delivery and plain-language guidance. Be demo-ready for a 48-hour hackathon: narrowly scoped, auditable (sources+year), measurable (deliveries/opens/replies), and extensible post-event."
+**Input**: User description: "WHAT: A working MVP that sends a personalized 2-week farm action brief via SMS (Top-3 actions + timing + triggers + icon) and a single public detail link per brief; personalization axes: region · crop · growth stage. Each brief integrates climate and pest/disease signals into one message; after-event checklists are included in the detail page. Keyword replies (bi-directional): 1 = details, REPORT = latest brief, CHANGE = update profile, STOP = opt-out. Detail page shows: 3-line situation summary, date/trigger checklist, one “Plan B,” and named sources with year—clear, senior-friendly language. Scenarios to cover (at least three end-to-end): heatwave, multi-day rain, strong wind, low-temp swing, plus one high-value hard crop (e.g., ginseng/strawberry/tomato/grape) per chosen region. actions are observation/environment/work only; every action cites one source+year. Two-step delivery—concise SMS + link to depth—aligns with the user flow in the shared diagram. WHY: Reduce climate & pest risks by translating signals into “what to do, when,” cutting avoidable losses in sensitive, high-value crops. Stabilize income through timely mitigation and better quality/yield decisions. Bridge the digital divide for seniors and low-access users with SMS-first delivery and plain-language guidance. Be demo-ready for a 48-hour hackathon: narrowly scoped, auditable (sources+year), measurable (deliveries/opens/replies), and extensible post-event."
 
 > Constitution Constraints (MVP):
 > - Ship exactly one working MVP in 48 hours
@@ -11,6 +11,21 @@
 > - Enforce KISS and YAGNI—omit non-essential features
 > - Avoid microservices and extra integrations/vendors
 > - Bias to ship for rapid learning/validation
+
+## Clarifications
+
+### Session 2025-10-22
+
+- Q: How should success be measured without real recipients? → A: Replace vanity KPIs
+  with binary on‑stage demo checks (pass/fail for delivery, link opens, replies).
+- Q: Should we implement any tracking/analytics? → A: No tracking stack. Keep focus on
+  MVP value; only minimal runtime visibility (e.g., console logs) if needed for demo.
+- Q: Must each action include an icon? → A: Optional. Include an icon only if SMS
+  length and compatibility allow; otherwise omit icons.
+- Q: Are pest/disease signals explicitly covered in tests? → A: Yes. Add an explicit
+  acceptance scenario demonstrating a pest/disease risk integrated with climate context.
+- Q: How many prompts may the CHANGE flow use? → A: 1–2 SMS prompts maximum (a mini wizard);
+  prioritize minimal questions and no additional links.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -42,7 +57,7 @@ Verify one SMS arrives containing top‑3 actions with timing and triggers and e
 
 1. Heatwave: Given a profile, when a heatwave signal applies, then the SMS contains
    top‑3 actions (e.g., shade, irrigation timing, canopy checks), timing windows, trigger
-   mention, one icon per action, and one public link.
+   mention, optional icons if length allows, and one public link.
 2. Multi‑day rain: Given a profile, when multi‑day rain is forecast, then the SMS contains
    prevention and after‑rain checks with timing and triggers plus one public link.
 3. Strong wind: Given a profile, when strong wind is forecast, then the SMS contains tie‑down
@@ -51,6 +66,9 @@ Verify one SMS arrives containing top‑3 actions with timing and triggers and e
    protection and monitoring actions with timing/triggers plus one public link.
 5. High‑value crop case: Given the chosen region and a designated high‑value crop,
    when a relevant signal applies, then the SMS includes crop‑specific actions and one link.
+6. Pest/disease alert: Given a profile, when a relevant pest/disease risk is present
+   (e.g., powdery mildew or rice blast), then the SMS integrates that signal with climate
+   context, includes targeted actions with timing/triggers, optional icons, and one link.
 
 ---
 
@@ -88,8 +106,8 @@ CHANGE = update profile, STOP = opt‑out.
    link again and guidance to open it.
 2. Given an active profile, when the user replies "REPORT", then they receive the latest
    brief summary and link.
-3. Given a user, when they reply "CHANGE", then they receive a link to update profile
-   (region, crop, growth stage) [NEEDS CLARIFICATION: CHANGE flow via link vs SMS prompts].
+3. Given a user, when they reply "CHANGE", then SMS prompts collect profile updates
+   (region, crop, growth stage) using at most 1–2 prompts, with no additional links.
 4. Given any user, when they reply "STOP", then they receive a confirmation and no further
    messages are sent until they re‑opt in, and the system records opt‑out.
 
@@ -106,8 +124,8 @@ CHANGE = update profile, STOP = opt‑out.
 
 - Unrecognized keyword → Send brief help text with supported keywords.
 - Link cannot be opened → Offer to resend link; keep SMS minimal.
-- Missing profile fields → Use defaults or prompt to complete minimal fields
-  [NEEDS CLARIFICATION: Initial profile capture path for demo participants].
+- Missing profile fields → Use defaults or prompt to complete minimal fields via SMS.
+- Initial demo profile capture → Use preloaded test profiles; updates handled via CHANGE via SMS.
 - High‑value crop not available for region → Fall back to default crop guidance and note
   the limitation.
 - STOP received after message send → Confirm opt‑out immediately and suppress future sends.
@@ -115,10 +133,12 @@ CHANGE = update profile, STOP = opt‑out.
 
 **Assumptions (demo scope)**
 
-- English‑only messaging for the demo audience.
-- Exactly one region and one high‑value crop will be selected for the demo cohort
-  [NEEDS CLARIFICATION: which region + crop + growth stage].
-- CHANGE will return a link to a minimal profile update page unless a pure SMS flow is chosen.
+- Messaging is in Korean for the demo audience.
+- Region is fixed to South Korea; coverage includes common high‑value crops for Korea;
+  default growth stage set per crop and adjustable via CHANGE prompts.
+- Profile updates are handled via SMS prompts (no additional links for CHANGE).
+- Opt‑in capture is out of scope for the hackathon demo; internal test numbers are
+  pre‑authorized per team policy.
 
 ## Requirements *(mandatory)*
 
@@ -130,29 +150,28 @@ CHANGE = update profile, STOP = opt‑out.
 ### Functional Requirements
 
 - **FR-001**: System MUST send exactly one concise SMS per brief that includes
-  top‑3 actions, timing windows, triggers, one icon per action, and exactly one
-  public link to a detail page.
+  top‑3 actions, timing windows, triggers, and exactly one public link to a detail page;
+  icons are optional and included only if SMS length/compatibility allows.
 - **FR-002**: Each brief MUST be personalized by region, crop, and growth stage.
 - **FR-003**: Each brief MUST integrate climate and pest/disease signals into a single message.
 - **FR-004**: The detail page MUST include: (a) a 3‑line situation summary,
   (b) a date/trigger checklist, (c) one "Plan B", and (d) named sources with year
   for each action.
 - **FR-005**: Keyword replies MUST function as follows: "1" returns the details link;
-  "REPORT" returns the latest brief summary and link; "CHANGE" returns a profile update path
-  [NEEDS CLARIFICATION: link to simple page vs SMS prompts]; "STOP" opts‑out, sends confirmation,
-  and prevents further messages.
-- **FR-006**: Each action MUST cite one named source with year; no pesticide/medical directives—
-  actions are observation/environment/work only (content policy enforced).
-- **FR-007**: System MUST capture minimal metrics needed for validation: deliveries,
-  link opens, and keyword replies.
+  "REPORT" returns the latest brief summary and link; "CHANGE" engages SMS prompts to
+  update profile (region, crop, growth stage) using at most 1–2 prompts; "STOP" opts‑out,
+  sends confirmation, and prevents further messages.
+- **FR-006**: Each action MUST cite one named source with year;
+- **FR-007**: No tracking/analytics stack is required. Acceptance is via binary on‑stage
+  checks (delivery, link opens, keyword replies). Minimal runtime visibility (e.g., console
+  logs) is sufficient for the demo.
 - **FR-008**: The brief MUST cover a 2‑week horizon and clearly indicate timing windows.
 - **FR-009**: MVP MUST demonstrate at least three end‑to‑end scenarios: heatwave,
   multi‑day rain, strong wind, low‑temperature swing; plus one case for a high‑value crop
   in the chosen region.
-- **FR-010**: Language MUST be senior‑friendly and plain; messages MUST be readable on basic
-  mobile devices.
-- **FR-011**: Demo participants MUST be explicitly opted‑in for SMS communication prior to
-  receiving any message [NEEDS CLARIFICATION: opt‑in method for demo].
+- **FR-010**: Language MUST be senior‑friendly and plain in Korean; messages MUST be readable
+  on basic mobile devices.
+  
 
 ### Key Entities *(include if feature involves data)*
 
@@ -161,7 +180,6 @@ CHANGE = update profile, STOP = opt‑out.
 - **Action**: Text, timing window, trigger condition, icon indicator, source name + year.
 - **Signal**: Climate and pest/disease indicators that map to actions.
 - **Interaction**: Inbound keyword (1/REPORT/CHANGE/STOP) and outbound response.
-- **Metrics**: Delivery status, link opens, keyword reply counts.
 
 ## Success Criteria *(mandatory)*
 
@@ -172,9 +190,19 @@ CHANGE = update profile, STOP = opt‑out.
 
 ### Measurable Outcomes
 
-- **SC-001**: ≥95% of opted‑in demo recipients receive the brief on first send.
-- **SC-002**: ≥60% of recipients open the detail link during the demo window.
-- **SC-003**: ≥40% of recipients who open the link send a supported keyword reply (1 or REPORT).
-- **SC-004**: 100% of STOP replies result in confirmation and suppression of any further sends.
-- **SC-005**: 100% of actions in the brief and detail page cite a named source and year;
-  zero content policy violations.
+- **SC-001**: On stage, the demo phone receives the SMS that includes top‑3 actions,
+  timing, triggers, optional icons, and a single link (pass/fail).
+- **SC-002**: The link opens on a basic mobile browser and shows the 3‑line summary,
+  date/trigger checklist, one Plan B, and sources with year (pass/fail).
+- **SC-003**: Replying "1" returns the details link; "REPORT" returns the latest brief
+  summary and link; "CHANGE" completes updates within 1–2 prompts; "STOP" opts‑out with
+  confirmation and suppresses future sends (pass/fail for each keyword).
+- **SC-004**: All actions in SMS and detail page cite a named source and year; no pesticide/
+  medical directives are present (pass/fail).
+- **SC-005**: Korean language is clear and senior‑friendly in both SMS and detail page
+  during the demo walkthrough (pass/fail).
+
+### Language and Localization
+
+- All SMS messages and the detail page MUST be written in Korean and remain senior‑friendly,
+  plain language.

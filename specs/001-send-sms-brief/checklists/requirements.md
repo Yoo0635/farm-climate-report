@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -35,8 +35,4 @@
 
 ## Validation Results
 
-- Failing item: "No [NEEDS CLARIFICATION] markers remain"
-  - Open clarifications in spec:
-    - CHANGE flow via link vs SMS prompts (User Story 3; FR-005)
-    - Initial profile capture path for demo participants (Edge Cases > Assumptions)
-    - Which region + crop + growth stage for demo (Assumptions)
+- All checklist items pass for this MVP spec. Ready for `/speckit.plan`.
