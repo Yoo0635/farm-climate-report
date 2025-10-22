@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: Farm Climate Reporter MVP API
+  version: 0.1.0
+  description: Monolithic API to send personalized SMS brief and serve public detail page.
+servers:
+  - url: https://api.example.com
+paths:
+  /api/briefs:
+    post:
+      summary: Trigger sending a personalized brief SMS
+      description: Sends one SMS (top-3 actions + timing/trigger) with one public link in Korean.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phone, region, crop, stage]
+              properties:
+                phone: { type: string, description: E.164 phone number }
+                region: { type: string }
+                crop: { type: string }
+                stage: { type: string }
+                scenario: { type: string, description: Optional demo scenario (e.g., HEATWAVE) }
+      responses:
+        '200':
+          description: Brief sent (or queued) for delivery
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  brief_id: { type: string }
+                  message_preview: { type: string }
+  /public/briefs/{brief_id}:
+    get:
+      summary: Public detail page for a brief
+      parameters:
+        - in: path
+          name: brief_id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: HTML detail page
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/sms/webhook:
+    post:
+      summary: Inbound SMS webhook (normalized)
+      description: Receives inbound keywords (1, REPORT, CHANGE, STOP) from the SMS vendor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [from, to, message]
+              properties:
+                from: { type: string }
+                to: { type: string }
+                message: { type: string }
+                timestamp: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Acknowledged
