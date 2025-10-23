@@ -5,10 +5,10 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-import google.generativeai as genai
+from google import genai
 
 
-DEFAULT_MODEL = "gemini-1.5-flash"
+DEFAULT_MODEL = "gemini-flash-lite-latest"
 
 
 @dataclass(slots=True)
@@ -26,9 +26,8 @@ class GeminiRefiner:
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required for GeminiRefiner")
-        genai.configure(api_key=api_key)
+        self._client = genai.Client(api_key=api_key)
         self._model_name = model or DEFAULT_MODEL
-        self._model = genai.GenerativeModel(self._model_name)
         self._config = config or RefinementConfig()
 
     def build_prompt(self, detailed_report: str) -> str:
@@ -47,7 +46,10 @@ class GeminiRefiner:
     def refine(self, detailed_report: str) -> str:
         """Generate the simplified output."""
         prompt = self.build_prompt(detailed_report)
-        response = self._model.generate_content(prompt)
+        response = self._client.models.generate_content(
+            model=self._model_name,
+            contents=prompt
+        )
         return response.text.strip()
 
 
