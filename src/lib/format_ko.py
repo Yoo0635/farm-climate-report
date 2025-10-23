@@ -5,6 +5,7 @@ from __future__ import annotations
 import textwrap
 
 MAX_SENTENCE_LENGTH = 40  # characters
+SENTENCE_TERMINATORS = ".!?…"  # Simple heuristics for sentence endings
 
 
 def split_sentences(text: str) -> list[str]:
@@ -13,8 +14,10 @@ def split_sentences(text: str) -> list[str]:
     buffer: list[str] = []
     for char in text:
         buffer.append(char)
-        if char in ".!?…" or char == "다" and buffer[-1] == "다":
-            sentences.append("".join(buffer).strip())
+        if char in SENTENCE_TERMINATORS:
+            sentence = "".join(buffer).strip()
+            if sentence and not all(ch in SENTENCE_TERMINATORS for ch in sentence):
+                sentences.append(sentence)
             buffer.clear()
     if buffer:
         sentences.append("".join(buffer).strip())
