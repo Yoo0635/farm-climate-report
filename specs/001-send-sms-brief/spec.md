@@ -29,8 +29,10 @@
 - Q: Are RAG and LLM usage part of the MVP? → A: Yes. A two‑step LLM pipeline generates a
   detailed report first, then a second LLM refines it into simpler Korean sentences for the
   SMS. The detailed report remains available at the public link, and its format is flexible.
- - Q: What is the fallback if the LLM pipeline fails? → A: Abort send and show explicit on‑stage
+- Q: What is the fallback if the LLM pipeline fails? → A: Abort send and show explicit on‑stage
   failure; do not send a partial or cached brief.
+ - Q: Which providers power the two LLM steps? → A: LLM‑1 uses OpenAI with RAG context;
+  LLM‑2 uses Google Gemini for Korean‑friendly refinement.
 
 ## User Scenarios & Testing *(mandatory)*
 

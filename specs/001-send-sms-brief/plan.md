@@ -22,7 +22,7 @@ on the detail page.
 -->
 
 **Language/Version**: Python 3.11  
-**Primary Dependencies**: FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (RAG + LLM)  
+**Primary Dependencies**: FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (LLM‑1 + RAG); Google Gemini SDK (LLM‑2)  
 **Storage**: None for MVP (in‑memory data/templates)  
 **Testing**: On‑stage pass/fail checks; optional pytest for unit flows  
 **Target Platform**: Cloud Run (monolith) + Firebase Hosting (public link)  
@@ -44,8 +44,8 @@ on the detail page.
 Gate Evaluation (pre‑design):
 - Single MVP: PASS — one SMS + one link.
 - Channel: PASS — SMS plus public link only.
-- Simplicity: PARTIAL — LLM‑first adds one extra vendor; still a monolith.
-- Integrations: EXCEPTION — add one LLM vendor (OpenAI) in addition to one SMS vendor; justified below.
+- Simplicity: PARTIAL — LLM‑first adds vendors; still a monolith.
+- Integrations: EXCEPTION — two LLM vendors (OpenAI for LLM‑1, Google Gemini for LLM‑2) in addition to one SMS vendor; justified below.
 - Ship‑to‑learn: PASS — binary on‑stage checks; no tracking stack.
 
 ## Project Structure
@@ -93,4 +93,4 @@ one LLM vendor (exception justified).
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| Extra vendor beyond SMS (LLM) | LLM‑first content is central for personalized, simplified KR text; templates alone insufficient | Template/rules‑only reduced quality; contradicts LLM‑first requirement |
+| Extra vendors beyond SMS (LLMs) | LLM‑first content is central; Gemini improves Korean clarity; OpenAI supports RAG context | Single‑vendor LLM reduced quality; templates‑only contradicted user requirement |

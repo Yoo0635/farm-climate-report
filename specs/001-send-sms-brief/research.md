@@ -17,9 +17,9 @@
 - Alternatives considered: Cloud Functions; pure Cloud Run serving both API and HTML; accepted but Firebase Hosting optional.
 
 ### 3) RAG and LLM Usage
-- Decision: Use LLM‑first pipeline: LLM‑1 generates detailed report from RAG context (OpenAI vector store + file_search/web_search); LLM‑2 refines into simpler Korean sentences for SMS.
-- Rationale: Central to value and clarity; improves personalization and senior‑friendly wording.
-- Alternatives considered: Templates/rules‑only (rejected—insufficient quality); Defer LLM (rejected—contradicts user direction).
+- Decision: Use LLM‑first pipeline: LLM‑1 (OpenAI, RAG with vector store + file_search/web_search) generates detailed report; LLM‑2 (Google Gemini) refines into simpler Korean sentences for SMS.
+- Rationale: Central to value and clarity; Gemini offers superior Korean handling; OpenAI supports robust RAG tooling.
+- Alternatives considered: Single LLM provider for both steps (rejected—lower KR quality); Templates/rules‑only (rejected—insufficient quality); Defer LLM (rejected—contradicts direction).
 
 ### 4) Icons in SMS
 - Decision: Optional; default OFF unless length/compatibility allows.
