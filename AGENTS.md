@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2025-10-22
 
 ## Active Technologies
+- Python 3.11 + FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (RAG + LLM) (001-send-sms-brief)
+- None for MVP (in‑memory data/templates) (001-send-sms-brief)
 
 - Python 3.11 + FastAPI; Jinja2 (detail page rendering); pydantic (validation) (001-send-sms-brief)
 
@@ -22,6 +24,7 @@ cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLO
 Python 3.11: Follow standard conventions
 
 ## Recent Changes
+- 001-send-sms-brief: Added Python 3.11 + FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (RAG + LLM)
 
 - 001-send-sms-brief: Added Python 3.11 + FastAPI; Jinja2 (detail page rendering); pydantic (validation)
 

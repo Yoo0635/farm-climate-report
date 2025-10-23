@@ -17,9 +17,9 @@
 - Alternatives considered: Cloud Functions; pure Cloud Run serving both API and HTML; accepted but Firebase Hosting optional.
 
 ### 3) RAG and LLM Usage
-- Decision: Defer RAG and GPT usage for MVP; use pre‑authored templates/rules.
-- Rationale: Constitution forbids extra vendors unless essential to send SMS + link; reduces complexity risk in 48h.
-- Alternatives considered: OpenAI Vector Store + file_search/web_search + GPT‑5; rejected for MVP (post‑event extension).
+- Decision: Use LLM‑first pipeline: LLM‑1 generates detailed report from RAG context (OpenAI vector store + file_search/web_search); LLM‑2 refines into simpler Korean sentences for SMS.
+- Rationale: Central to value and clarity; improves personalization and senior‑friendly wording.
+- Alternatives considered: Templates/rules‑only (rejected—insufficient quality); Defer LLM (rejected—contradicts user direction).
 
 ### 4) Icons in SMS
 - Decision: Optional; default OFF unless length/compatibility allows.

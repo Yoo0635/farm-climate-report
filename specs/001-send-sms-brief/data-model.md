@@ -45,17 +45,32 @@
   - received_at (datetime)
   - response (string)
 
+- DraftReport
+  - id (string)
+  - brief_id (string)
+  - content (string)  # flexible format
+  - created_at (datetime)
+
+- RefinedReport
+  - id (string)
+  - draft_id (string)
+  - content (string)  # simplified Korean sentences
+  - created_at (datetime)
+
 ## Relationships
 - Profile 1—* Brief
 - Brief *—* Action (embedded list)
 - Brief *—* Signal (derived / associated)
 - Phone 1—* Interaction
+ - Brief 1—1 DraftReport (when LLM succeeds)
+ - DraftReport 1—1 RefinedReport (when LLM succeeds)
 
 ## Validation Rules
 - Exactly 3 actions per brief.
 - Each action MUST include source_name and source_year.
 - Icons optional; omit if SMS length risk detected.
 - CHANGE flow prompts ≤2 messages; updates region/crop/stage only.
+ - If LLM pipeline fails, no DraftReport/RefinedReport entities are created; send is aborted.
 
 ## State Notes
 - Opt‑in out of scope for demo; profiles pre‑authorized.

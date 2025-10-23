@@ -7,11 +7,11 @@
 
 ## Summary
 
-Deliver a single, monolithic service that sends one personalized 2‑week farm action
-brief via SMS (top‑3 actions + timing + triggers, icons optional) plus one public link
-to a senior‑friendly Korean detail page. Personalization axes: region, crop, growth stage.
-Signals: merge climate + pest/disease into one message. For the 48‑hour MVP, defer RAG and
-use pre‑authored templates/rules to minimize risk; select one SMS vendor for Korea.
+Deliver one personalized 2‑week farm action brief via SMS (top‑3 actions + timing +
+triggers, icons optional) plus one public link to a Korean, senior‑friendly detail page.
+LLM‑first: a two‑step pipeline generates a detailed report (LLM‑1, RAG context), then
+refines it to simpler sentences for SMS (LLM‑2). The detailed report remains optional
+on the detail page.
 
 ## Technical Context
 
@@ -22,13 +22,13 @@ use pre‑authored templates/rules to minimize risk; select one SMS vendor for K
 -->
 
 **Language/Version**: Python 3.11  
-**Primary Dependencies**: FastAPI; Jinja2 (detail page rendering); pydantic (validation)  
+**Primary Dependencies**: FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (RAG + LLM)  
 **Storage**: None for MVP (in‑memory data/templates)  
-**Testing**: Manual on‑stage acceptance checks; optional pytest for unit flows  
-**Target Platform**: Google Cloud Run (monolith) + Firebase Hosting (public link)  
+**Testing**: On‑stage pass/fail checks; optional pytest for unit flows  
+**Target Platform**: Cloud Run (monolith) + Firebase Hosting (public link)  
 **Project Type**: single  
-**Performance Goals**: Demo‑only; responsive interaction on a single device  
-**Constraints**: Korean language; SMS length; one SMS vendor; icons optional; no tracking stack  
+**Performance Goals**: Demo‑only; responsive on a single device  
+**Constraints**: Korean language; SMS length; one SMS vendor; icons optional; no tracking stack; LLM failure aborts send  
 **Scale/Scope**: ≤10 pre‑authorized demo recipients
 
 ## Constitution Check
@@ -44,11 +44,9 @@ use pre‑authored templates/rules to minimize risk; select one SMS vendor for K
 Gate Evaluation (pre‑design):
 - Single MVP: PASS — one SMS + one link.
 - Channel: PASS — SMS plus public link only.
-- Simplicity: PASS — monolith; pre‑authored templates instead of RAG.
-- Integrations: PASS — exactly one SMS vendor; RAG deferred to avoid extra vendor.
+- Simplicity: PARTIAL — LLM‑first adds one extra vendor; still a monolith.
+- Integrations: EXCEPTION — add one LLM vendor (OpenAI) in addition to one SMS vendor; justified below.
 - Ship‑to‑learn: PASS — binary on‑stage checks; no tracking stack.
-
-Gate Evaluation (post‑design): PASS — design retains monolith + one SMS vendor; RAG deferred.
 
 ## Project Structure
 
@@ -75,9 +73,9 @@ specs/[###-feature]/
 ```text
 src/
 ├── api/                 # FastAPI routes (send brief, webhook, detail page)
-├── services/            # brief generation (template/rules), sms send, keyword handler
+├── services/            # brief generation (LLM/RAG), sms send, keyword handler
 ├── templates/           # Korean detail page template(s)
-└── lib/                 # shared helpers (formatting, validation)
+└── lib/                 # helpers (formatting, validation)
 
 tests/
 ├── contract/
@@ -85,8 +83,9 @@ tests/
 └── unit/
 ```
 
-**Structure Decision**: Single project (monolith). Public detail page rendered via template;
-Cloud Run serves API; Firebase Hosting can proxy public link if needed. One SMS vendor only.
+**Structure Decision**: Single project (monolith). Public detail page via template.
+Cloud Run serves API; Firebase Hosting proxies public link if needed. One SMS vendor +
+one LLM vendor (exception justified).
 
 ## Complexity Tracking
 
@@ -94,4 +93,4 @@ Cloud Run serves API; Firebase Hosting can proxy public link if needed. One SMS 
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| — | — | — |
+| Extra vendor beyond SMS (LLM) | LLM‑first content is central for personalized, simplified KR text; templates alone insufficient | Template/rules‑only reduced quality; contradicts LLM‑first requirement |

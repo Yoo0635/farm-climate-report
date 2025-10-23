@@ -8,7 +8,7 @@ This guide demonstrates end-to-end flows for the hackathon MVP.
 
 ## Trigger a Brief (demo)
 
-Example JSON payload:
+Example JSON payload (LLM-first):
 ```json
 {
   "phone": "+821012345678",
@@ -27,8 +27,9 @@ curl -X POST https://api.example.com/api/briefs \
 ```
 
 Expected result:
+- LLM generates a detailed report; second LLM refines sentences.
 - One SMS arrives in Korean with top‑3 actions, timing, triggers, and one link.
-- Opening the link shows the required detail page elements.
+- Opening the link shows the required elements plus an optional detailed report section.
 
 ## Inbound Keywords (demo)
 
