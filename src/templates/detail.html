@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "농장 기후 보고서" }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <main>
+      <section id="summary">
+        <h1>{{ summary_title }}</h1>
+        <p>{{ summary_line1 }}</p>
+        <p>{{ summary_line2 }}</p>
+        <p>{{ summary_line3 }}</p>
+      </section>
+
+      <section id="checklist">
+        <h2>날짜 · 트리거 체크리스트</h2>
+        <ul>
+          {% for item in checklist %}
+            <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      <section id="plan-b">
+        <h2>Plan B</h2>
+        <p>{{ plan_b }}</p>
+      </section>
+
+      <section id="sources">
+        <h2>근거</h2>
+        <ul>
+          {% for source in sources %}
+            <li>{{ source.name }} ({{ source.year }})</li>
+          {% endfor %}
+        </ul>
+      </section>
+
+      {% if detailed_report %}
+      <section id="detailed-report">
+        <h2>상세 보고서 (선택)</h2>
+        <article>
+          {{ detailed_report | safe }}
+        </article>
+      </section>
+      {% endif %}
+    </main>
+  </body>
+</html>

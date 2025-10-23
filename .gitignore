@@ -1,2 +1,25 @@
 .codex/
 .codex/!.specify/
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Environment & tooling
+.env
+.env.*
+!.env.sample
+*.log
+/.idea/
+/.vscode/
+*.swp
+*.tmp
+
+# OS artifacts
+.DS_Store
+Thumbs.db
