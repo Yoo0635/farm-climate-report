@@ -7,9 +7,9 @@
 ## Decisions
 
 ### 1) SMS Vendor (Korea)
-- Decision: Naver Cloud SENS (single vendor)
+- Decision: SOLAPI (single vendor)
 - Rationale: Local provider with solid Korea coverage; aligns with “one SMS vendor only”.
-- Alternatives considered: SOLAPI (good alternative); Twilio (global but unnecessary for KR MVP).
+- Alternatives considered: Naver Cloud SENS (good alternative); Twilio (global but unnecessary for KR MVP).
 
 ### 2) Architecture (Monolith + Hosting)
 - Decision: One FastAPI monolith on Cloud Run; public detail link via Firebase Hosting (or Cloud Run route if simpler).
