@@ -48,6 +48,8 @@ DEMO_RECIPIENT_NUMBER=+8210XXXXXXXX
 SOLAPI_DRY_RUN=1
 # 상세 페이지 베이스 URL(선택):
 DETAIL_BASE_URL=https://example.com/public/briefs
+# LLM 오프라인/스텁 모드(선택): 1/true/yes 또는 LLM_MODE=fake
+LLM_OFFLINE=1
 ```
 
 ### 4) 실행
@@ -68,6 +70,22 @@ PHONE="+8210XXXXXXXX" API_BASE=http://127.0.0.1:8000 ./scripts/demo_smoke.sh
 - `SOLAPI_DRY_RUN=1`이면 SOLAPI 네트워크 발송 없이 경로만 검증합니다.
 - LLM 키가 존재하면 `/api/briefs` 호출에서 실제 LLM이 수행됩니다.
 
+### 6) CLI 파이프라인 프리뷰(로그 파일 생성)
+
+```bash
+# 오프라인(스텁 LLM)으로 실행 + 로그 파일 저장
+python scripts/pipeline_preview.py \
+  --region KR/Seoul --crop Strawberry --stage Flowering --scenario HEATWAVE \
+  --offline --log logs/pipeline.log
+
+# 온라인(실제 LLM)으로 실행하려면 --offline 제거 및 API 키 설정 필요
+python scripts/pipeline_preview.py \
+  --region KR/Seoul --crop Strawberry --stage Flowering --scenario HEATWAVE \
+  --log logs/pipeline.log
+```
+
+콘솔과 로그 파일 모두에 RAG/LLM 결과와 SMS 본문(미발송)이 출력됩니다.
+
 ## 주요 엔드포인트
 
 - POST `/api/briefs`
@@ -76,6 +94,12 @@ PHONE="+8210XXXXXXXX" API_BASE=http://127.0.0.1:8000 ./scripts/demo_smoke.sh
     {"phone":"+8210XXXXYYYY","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}
     ```
   - 동작: RAG → LLM‑1 → LLM‑2 → 링크 생성 → SMS 1건 발송
+- POST `/api/briefs/preview`
+  - 본문 예시:
+    ```json
+    {"region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}
+    ```
+  - 동작: RAG → LLM‑1 → LLM‑2 결과를 JSON으로 반환(SMS 미발송). `LLM_OFFLINE=1`이면 네트워크 없이 스텁 LLM으로 동작.
 - POST `/api/sms/webhook`
   - 예시:
     ```json
@@ -111,7 +135,6 @@ specs/001-send-sms-brief/  # 스펙, 플랜, 계약서, 퀵스타트
 
 ## 문제 해결(FAQ)
 
-- LLM 키가 없을 때: `/api/briefs`가 실패할 수 있습니다(OPENAI/GEMINI 키 필요).
+- LLM 키가 없을 때: `/api/briefs`는 실패할 수 있습니다(OPENAI/GEMINI 키 필요). 키 없이 파이프라인을 테스트하려면 `LLM_OFFLINE=1`로 `/api/briefs/preview`를 호출하세요.
 - 실제 발송 방지: `.env`에 `SOLAPI_DRY_RUN=1`
 - 번호 형식: `010…`은 자동으로 `+82…`로 변환(데모 스크립트)
-

@@ -130,3 +130,64 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
 
     preview = sms_body.splitlines()[0][:100]
     return BriefResponse(brief_id=brief_id, message_preview=preview)
+
+
+class PreviewRequest(BaseModel):
+    """Request to run the LLM pipeline without sending SMS."""
+
+    region: str
+    crop: str
+    stage: str
+    scenario: str | None = Field(None, description="Optional demo scenario code (e.g., HEATWAVE)")
+    date_range_override: str | None = None
+
+
+class PreviewResponse(BaseModel):
+    """Raw pipeline outputs for inspection/testing."""
+
+    rag_passages: list[str]
+    web_findings: list[str]
+    detailed_report: str
+    refined_report: str
+    sms_body: str
+
+
+@router.post("/preview", response_model=PreviewResponse, status_code=status.HTTP_200_OK)
+def preview_brief(payload: PreviewRequest) -> PreviewResponse:
+    """Run RAG → LLM-1 → LLM-2 and return outputs; do not send SMS."""
+    # Build a throwaway profile for pipeline inputs (no SMS dispatch)
+    profile = Profile(
+        id="preview",
+        phone="",
+        region=payload.region,
+        crop=payload.crop,
+        stage=payload.stage,
+        language="ko",
+        opt_in=True,
+    )
+
+    signals, actions = map_scenario_to_actions(payload.scenario or "")
+    validate_actions(actions)
+    date_range = payload.date_range_override or f"{datetime.utcnow():%Y-%m-%d} ~ {(datetime.utcnow() + timedelta(days=14)):%Y-%m-%d}"
+
+    try:
+        generator = _get_generator()
+        generation_result: BriefGenerationResult = generator.generate(
+            BriefGenerationContext(profile=profile, signals=signals, actions=actions, date_range=date_range)
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - propagate as HTTP
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+    refined_text = append_citations(generation_result.refined_report, actions)
+    # A preview SMS body is useful for end-to-end grasp; use a dummy link
+    sms_body = build_sms(refined_text, link_url="https://example.com/public/briefs/preview")
+
+    return PreviewResponse(
+        rag_passages=list(generation_result.rag_result.passages),
+        web_findings=list(generation_result.rag_result.web_findings),
+        detailed_report=generation_result.detailed_report,
+        refined_report=refined_text,
+        sms_body=sms_body,
+    )
