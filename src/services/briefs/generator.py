@@ -8,6 +8,7 @@ from typing import Iterable, Sequence
 from src.lib.models import Action, Profile, Signal
 from src.services.llm.gemini_client import GeminiRefiner
 from src.services.llm.openai_client import OpenAILLM, RagContext
+from src.services.llm.factory import build_llm_stack
 from src.services.llm.rag_store import RagStore, RagResult
 
 
@@ -40,8 +41,13 @@ class BriefGenerator:
         llm_refiner: GeminiRefiner | None = None,
     ) -> None:
         self._rag_store = rag_store or RagStore()
-        self._llm_primary = llm_primary or OpenAILLM()
-        self._llm_refiner = llm_refiner or GeminiRefiner()
+        if llm_primary is None or llm_refiner is None:
+            primary, refiner = build_llm_stack()
+            self._llm_primary = llm_primary or primary  # type: ignore[assignment]
+            self._llm_refiner = llm_refiner or refiner  # type: ignore[assignment]
+        else:
+            self._llm_primary = llm_primary
+            self._llm_refiner = llm_refiner
 
     def _topics_from_signals(self, signals: Iterable[Signal], profile: Profile) -> list[str]:
         topics = {profile.crop, profile.region, profile.stage}
