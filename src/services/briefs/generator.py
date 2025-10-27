@@ -7,9 +7,8 @@ from typing import Iterable, Sequence
 
 from src.lib.models import Action, Profile, Signal
 from src.services.llm.gemini_client import GeminiRefiner
-from src.services.llm.openai_client import OpenAILLM, RagContext
+from src.services.llm.openai_client import OpenAILLM
 from src.services.llm.factory import build_llm_stack
-from src.services.llm.rag_store import RagStore, RagResult
 
 
 @dataclass(slots=True)
@@ -25,8 +24,6 @@ class BriefGenerationContext:
 @dataclass(slots=True)
 class BriefGenerationResult:
     """Outputs from the generation pipeline."""
-
-    rag_result: RagResult
     detailed_report: str
     refined_report: str
 
@@ -36,11 +33,9 @@ class BriefGenerator:
 
     def __init__(
         self,
-        rag_store: RagStore | None = None,
         llm_primary: OpenAILLM | None = None,
         llm_refiner: GeminiRefiner | None = None,
     ) -> None:
-        self._rag_store = rag_store or RagStore()
         if llm_primary is None or llm_refiner is None:
             primary, refiner = build_llm_stack()
             self._llm_primary = llm_primary or primary  # type: ignore[assignment]
@@ -49,27 +44,12 @@ class BriefGenerator:
             self._llm_primary = llm_primary
             self._llm_refiner = llm_refiner
 
-    def _topics_from_signals(self, signals: Iterable[Signal], profile: Profile) -> list[str]:
-        topics = {profile.crop, profile.region, profile.stage}
-        for signal in signals:
-            topics.add(signal.code)
-        return [topic for topic in topics if topic]
-
     def generate(self, context: BriefGenerationContext) -> BriefGenerationResult:
         """Run pipeline and return raw outputs; downstream components format SMS/detail page."""
-        topics = self._topics_from_signals(context.signals, context.profile)
-        rag_result = self._rag_store.fetch(topics)
         detailed_prompt = self._build_detailed_prompt(context)
-        detailed_report = self._llm_primary.generate_report(
-            RagContext(passages=rag_result.passages, web_findings=rag_result.web_findings),
-            detailed_prompt,
-        )
+        detailed_report = self._llm_primary.generate_report(detailed_prompt)
         refined = self._llm_refiner.refine(detailed_report)
-        return BriefGenerationResult(
-            rag_result=rag_result,
-            detailed_report=detailed_report,
-            refined_report=refined,
-        )
+        return BriefGenerationResult(detailed_report=detailed_report, refined_report=refined)
 
     def _build_detailed_prompt(self, context: BriefGenerationContext) -> str:
         action_summary = "\n".join(

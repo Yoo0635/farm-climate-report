@@ -119,7 +119,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Region/Crop/Stage: {args.region} / {args.crop} / {args.stage}")
     print(f"Scenario: {args.scenario or 'GENERAL'}")
     print(f"Date Range: {date_range}")
-    print(f"RAG: {len(gen.rag_result.passages)} passages, {len(gen.rag_result.web_findings)} web findings")
     print("\n--- Detailed Report (first 600 chars) ---")
     print(gen.detailed_report[:600])
     print("\n--- Refined Report ---")
@@ -128,12 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     print(sms_body)
 
     # Log details
-    logger.info("RAG passages: %d", len(gen.rag_result.passages))
-    for p in gen.rag_result.passages:
-        logger.info("RAG passage: %s", p)
-    logger.info("Web findings: %d", len(gen.rag_result.web_findings))
-    for w in gen.rag_result.web_findings:
-        logger.info("Web finding: %s", w)
+    # RAG counts removed: Vector Store file_search is handled by the model
     logger.info("Detailed report length: %d", len(gen.detailed_report))
     logger.debug("Detailed report (full):\n%s", gen.detailed_report)
     logger.info("Refined report length: %d", len(refined_text))

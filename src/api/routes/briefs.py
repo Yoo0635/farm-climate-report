@@ -143,10 +143,8 @@ class PreviewRequest(BaseModel):
 
 
 class PreviewResponse(BaseModel):
-    """Raw pipeline outputs for inspection/testing."""
+    """Raw pipeline outputs for inspection/testing (without legacy RAG fields)."""
 
-    rag_passages: list[str]
-    web_findings: list[str]
     detailed_report: str
     refined_report: str
     sms_body: str
@@ -185,8 +183,6 @@ def preview_brief(payload: PreviewRequest) -> PreviewResponse:
     sms_body = build_sms(refined_text, link_url="https://example.com/public/briefs/preview")
 
     return PreviewResponse(
-        rag_passages=list(generation_result.rag_result.passages),
-        web_findings=list(generation_result.rag_result.web_findings),
         detailed_report=generation_result.detailed_report,
         refined_report=refined_text,
         sms_body=sms_body,

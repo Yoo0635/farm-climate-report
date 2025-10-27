@@ -39,6 +39,8 @@ pip install -r requirements.txt
 ```ini
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
+# OpenAI Vector Store ID for RAG (optional but recommended)
+OPENAI_VECTOR_STORE_ID=vs_68fa0143bb108191b32ac059c2aa7450
 SOLAPI_ACCESS_KEY=...
 SOLAPI_SECRET_KEY=...
 SOLAPI_SENDER_NUMBER=010XXXXXXXX  # 또는 +82형식
@@ -136,5 +138,6 @@ specs/001-send-sms-brief/  # 스펙, 플랜, 계약서, 퀵스타트
 ## 문제 해결(FAQ)
 
 - LLM 키가 없을 때: `/api/briefs`는 실패할 수 있습니다(OPENAI/GEMINI 키 필요). 키 없이 파이프라인을 테스트하려면 `LLM_OFFLINE=1`로 `/api/briefs/preview`를 호출하세요.
+- OpenAI Vector Store 사용: `.env`에 `OPENAI_VECTOR_STORE_ID`를 설정하면 LLM‑1 호출 시 `file_search` 도구로 해당 벡터스토어를 자동 첨부합니다.
 - 실제 발송 방지: `.env`에 `SOLAPI_DRY_RUN=1`
 - 번호 형식: `010…`은 자동으로 `+82…`로 변환(데모 스크립트)
