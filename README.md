@@ -15,7 +15,7 @@
 - FastAPI 단일 앱(모놀리식) + Jinja2 템플릿(상세 페이지)
 - SMS 벤더: SOLAPI(공식 Python SDK)
 - RAG: Vector Store + file_search/web_search(현재 스텁 수준, 해커톤 범위)
-- 배포: Cloud Run(백엔드) + Firebase Hosting(프론트 라우팅/프록시)
+- 배포: 단일 서버에서 백엔드와 상세 페이지를 동일 서비스 라우트로 제공
 
 ## 빠른 시작(로컬)
 
@@ -48,8 +48,10 @@ SOLAPI_SENDER_NUMBER=010XXXXXXXX  # 또는 +82형식
 DEMO_RECIPIENT_NUMBER=+8210XXXXXXXX
 # 데모시 실제 발송 방지(선택): 1/true/yes
 SOLAPI_DRY_RUN=1
-# 상세 페이지 베이스 URL(선택):
-DETAIL_BASE_URL=https://example.com/public/briefs
+# 상세 페이지 베이스 URL(서버 배포 시)
+# 배포한 서버의 기본 URL 뒤에 /public/briefs 경로를 붙여 지정
+# 예: https://your-server-domain/public/briefs
+DETAIL_BASE_URL=https://your-server-domain/public/briefs
 # LLM 오프라인/스텁 모드(선택): 1/true/yes 또는 LLM_MODE=fake
 LLM_OFFLINE=1
 ```
@@ -132,8 +134,9 @@ specs/001-send-sms-brief/  # 스펙, 플랜, 계약서, 퀵스타트
 
 ## 배포 참고
 
-- Dockerfile / cloudrun.yaml 포함(환경변수는 런타임에 주입)
-- Firebase Hosting로 공개 링크 라우팅/프록시 설정(firebase.json)
+- Dockerfile 포함(환경변수는 런타임에 주입)
+- 공개 링크는 애플리케이션의 `/public/briefs/{link_id}` 라우트를 직접 사용합니다.
+- SMS 본문에 포함될 링크의 베이스 URL은 `DETAIL_BASE_URL` 환경변수로 설정하세요. 예: `https://<server-domain>/public/briefs`
 
 ## 문제 해결(FAQ)
 

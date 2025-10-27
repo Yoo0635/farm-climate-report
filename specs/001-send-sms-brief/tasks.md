@@ -25,7 +25,7 @@
 - [X] T007 Create FastAPI app entrypoint in src/api/app.py
 - [X] T008 Add dependencies manifest in requirements.txt (FastAPI, pydantic, Jinja2, OpenAI, Google‑GenAI)
 - [X] T009 [P] Add environment template in .env.sample (OPENAI_API_KEY, GEMINI_API_KEY, SOLAPI_KEY/SECRET)
-- [X] T010 Add minimal Cloud Run files in Dockerfile and cloudrun.yaml
+- [X] T010 Add minimal containerization file (Dockerfile)
 - [X] T011 [P] Add base template in src/templates/detail.html
 
 ---
@@ -106,8 +106,8 @@
 - [X] T041 Update AGENTS.md with active technologies and recent changes in AGENTS.md
 - [X] T042 Run content policy review (no pesticide/medical; citations present) in src/lib/policy.py
 - [X] T043 Add demo smoke script to drive flows in scripts/demo_smoke.sh
-- [X] T044 Add Dockerfile and cloudrun.yaml for deployment (Cloud Run) in Dockerfile, cloudrun.yaml
-- [X] T045 Add Firebase Hosting config and public assets in firebase.json, public/404.html
+- [X] T044 Add Dockerfile for deployment container image
+- [X] T045 Remove Firebase/Firebase Hosting config; serve public link via app route (`/public/briefs/{id}`)
 - [X] T046 Add LLM credentials/setup doc in docs/llm-config.md
 - [X] T047 Add Korean style guide for authors in docs/ko-style-guide.md
 

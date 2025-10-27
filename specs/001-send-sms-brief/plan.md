@@ -25,7 +25,7 @@ on the detail page.
 **Primary Dependencies**: FastAPI; Jinja2 (detail page); pydantic; OpenAI SDK (LLM‑1 + RAG); Google Gemini SDK (LLM‑2)  
 **Storage**: None for MVP (in‑memory data/templates)  
 **Testing**: On‑stage pass/fail checks; optional pytest for unit flows  
-**Target Platform**: Cloud Run (monolith) + Firebase Hosting (public link)  
+**Target Platform**: Single server (monolith; serves API and public link)  
 **Project Type**: single  
 **Performance Goals**: Demo‑only; responsive on a single device  
 **Constraints**: Korean language; SMS length; one SMS vendor; icons optional; no tracking stack; LLM failure aborts send  
@@ -84,7 +84,7 @@ tests/
 ```
 
 **Structure Decision**: Single project (monolith). Public detail page via template.
-Cloud Run serves API; Firebase Hosting proxies public link if needed. One SMS vendor +
+The same server serves both API and the public detail page directly. One SMS vendor +
 one LLM vendor (exception justified).
 
 ## Complexity Tracking

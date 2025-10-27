@@ -180,7 +180,8 @@ def preview_brief(payload: PreviewRequest) -> PreviewResponse:
 
     refined_text = append_citations(generation_result.refined_report, actions)
     # A preview SMS body is useful for end-to-end grasp; use a dummy link
-    sms_body = build_sms(refined_text, link_url="https://example.com/public/briefs/preview")
+    base_url = os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs").rstrip("/")
+    sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
     return PreviewResponse(
         detailed_report=generation_result.detailed_report,

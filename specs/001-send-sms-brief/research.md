@@ -11,10 +11,10 @@
 - Rationale: Local provider with solid Korea coverage; aligns with “one SMS vendor only”.
 - Alternatives considered: Naver Cloud SENS (good alternative); Twilio (global but unnecessary for KR MVP).
 
-### 2) Architecture (Monolith + Hosting)
-- Decision: One FastAPI monolith on Cloud Run; public detail link via Firebase Hosting (or Cloud Run route if simpler).
-- Rationale: Single deployable artifact; keeps two‑step (SMS + link) simple; easy to demo.
-- Alternatives considered: Cloud Functions; pure Cloud Run serving both API and HTML; accepted but Firebase Hosting optional.
+### 2) Architecture (Monolith, single server)
+- Decision: One FastAPI monolith; public detail link served directly via the `/public/briefs/{id}` route on the same server.
+- Rationale: Single deployable artifact; keeps two‑step (SMS + link) simple; no extra hosting layer.
+- Alternatives considered: Cloud Functions; external hosting proxy; rejected—no extra hosting layer for this project.
 
 ### 3) RAG and LLM Usage
 - Decision: Use LLM‑first pipeline: LLM‑1 (OpenAI, RAG with vector store + file_search/web_search) generates detailed report; LLM‑2 (Google Gemini) refines into simpler Korean sentences for SMS.

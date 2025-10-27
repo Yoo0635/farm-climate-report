@@ -112,7 +112,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # Post-processing
     refined_text = append_citations(gen.refined_report, actions)
-    sms_body = build_sms(refined_text, link_url="https://example.com/public/briefs/preview")
+    base_url = os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs").rstrip("/")
+    sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
     # Console-friendly output
     print("\n=== Pipeline Preview ===")
