@@ -55,8 +55,10 @@ def test_preview_endpoint_offline() -> None:
     resp = client.post("/api/briefs/preview", json=payload)
     assert resp.status_code == 200
     data = resp.json()
-    assert isinstance(data.get("rag_passages"), list)
-    assert isinstance(data.get("web_findings"), list)
-    assert data.get("detailed_report")
-    assert data.get("refined_report")
-    assert data.get("sms_body")
+    # Legacy RAG fields removed; ensure they are not present
+    assert "rag_passages" not in data
+    assert "web_findings" not in data
+    # New minimal contract
+    assert isinstance(data.get("detailed_report"), str) and data["detailed_report"]
+    assert isinstance(data.get("refined_report"), str) and data["refined_report"]
+    assert isinstance(data.get("sms_body"), str) and data["sms_body"]
