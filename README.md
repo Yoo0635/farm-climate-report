@@ -90,6 +90,27 @@ python scripts/pipeline_preview.py \
 
 콘솔과 로그 파일 모두에 RAG/LLM 결과와 SMS 본문(미발송)이 출력됩니다.
 
+### 7) React 콘솔(선택, 운영자용)
+
+```bash
+# API 서버 실행(별도 탭)
+uvicorn src.api.app:app --reload
+
+# 콘솔 실행
+cd frontend
+npm i
+npm run dev
+# Vite dev 서버가 /api/**를 127.0.0.1:8000으로 프록시
+```
+
+빌드하여 FastAPI에서 정적 서빙하려면:
+
+```bash
+cd frontend
+npm run build
+# 서버가 자동으로 frontend/dist를 /console로 서빙합니다(존재 시)
+```
+
 ## 주요 엔드포인트
 
 - POST `/api/briefs`
