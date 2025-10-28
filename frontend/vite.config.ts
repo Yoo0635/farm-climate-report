@@ -7,8 +7,12 @@ export default defineConfig({
     port: 5173,
     host: true,
     proxy: {
-      // Dev에서 /api 호출은 FastAPI(127.0.0.1:8000)로 프록시 → CORS 회피
+      // Dev에서 API 호출은 FastAPI로 프록시 → CORS 회피
       '/api': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true
+      },
+      '/health': {
         target: 'http://127.0.0.1:8000',
         changeOrigin: true
       }
@@ -16,4 +20,3 @@ export default defineConfig({
   },
   build: { outDir: 'dist' }
 })
-
