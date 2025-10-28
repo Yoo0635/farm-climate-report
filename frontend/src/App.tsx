@@ -390,16 +390,9 @@ export default function App() {
                 flexWrap: "wrap",
               }}
             >
-              <button
-                className="btn btn-ghost btn-icon"
-                onClick={() => copy(preview.sms_body, "sms")}
-              >
-                복사
-              </button>
               <span className="muted">
                 길이: <span className="pill">{preview.sms_body.length}</span>
               </span>
-              {copied === "sms" && <span className="muted">복사됨</span>}
             </div>
             <pre style={{ whiteSpace: "pre-wrap" }}>{preview.sms_body}</pre>
             <h4>정제 보고서</h4>
