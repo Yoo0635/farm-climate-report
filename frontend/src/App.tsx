@@ -18,14 +18,15 @@ type FormState = {
 };
 
 const LS_KEY = "fcr:console:form";
+const REGIONS = ["수도권", "강원", "충청", "호남", "영남", "제주"] as const;
 
 export default function App() {
   const [form, setForm] = useState<FormState>({
     phone: "",
-    region: "KR/Seoul",
-    crop: "Strawberry",
-    stage: "Flowering",
-    scenario: "HEATWAVE",
+    region: "수도권",
+    crop: "딸기",
+    stage: "발아기",
+    scenario: "폭염",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +34,7 @@ export default function App() {
   const [sendResult, setSendResult] = useState<BriefResponse | null>(null);
   const [health, setHealth] = useState<"ok" | "error" | "pending">("pending");
   const [copied, setCopied] = useState<string | null>(null);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   // 복원
   useEffect(() => {
@@ -130,12 +132,58 @@ export default function App() {
     }
   }
 
-  async function copy(text: string, tag: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(tag);
-      setTimeout(() => setCopied(null), 1200);
-    } catch {}
+  function copy(text: string, tag: string) {
+    setCopyError(null);
+
+    const copyLegacy = (t: string) => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = t;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.top = "-1000px";
+        ta.style.left = "-1000px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    };
+
+    const cb: any = (navigator as any).clipboard;
+    const secure = (window as any).isSecureContext;
+    if (cb && secure) {
+      cb.writeText(text)
+        .then(() => {
+          setCopied(tag);
+          setTimeout(() => setCopied(null), 1200);
+        })
+        .catch(() => {
+          const ok = copyLegacy(text);
+          if (ok) {
+            setCopied(tag);
+            setTimeout(() => setCopied(null), 1200);
+          } else {
+            setCopyError(
+              "클립보드 복사 실패: 브라우저 권한/보안 설정을 확인하세요."
+            );
+          }
+        });
+    } else {
+      const ok = copyLegacy(text);
+      if (ok) {
+        setCopied(tag);
+        setTimeout(() => setCopied(null), 1200);
+      } else {
+        setCopyError(
+          "클립보드 복사 실패: 브라우저 권한/보안 설정을 확인하세요."
+        );
+      }
+    }
   }
 
   return (
@@ -195,14 +243,19 @@ export default function App() {
               </div>
             </div>
             <div className="field">
-              <label>지역(region)</label>
-              <input
+              <label>지역(권역)</label>
+              <select
                 value={form.region}
                 onChange={(e) =>
                   setForm((s) => ({ ...s, region: e.target.value }))
                 }
-                placeholder="KR/Seoul"
-              />
+              >
+                {REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="field">
               <label>작물(crop)</label>
@@ -211,7 +264,7 @@ export default function App() {
                 onChange={(e) =>
                   setForm((s) => ({ ...s, crop: e.target.value }))
                 }
-                placeholder="Strawberry"
+                placeholder="딸기"
               />
             </div>
             <div className="field">
@@ -221,7 +274,7 @@ export default function App() {
                 onChange={(e) =>
                   setForm((s) => ({ ...s, stage: e.target.value }))
                 }
-                placeholder="Flowering"
+                placeholder="발아기"
               />
             </div>
             <div className="field">
@@ -234,7 +287,7 @@ export default function App() {
                     scenario: e.target.value || undefined,
                   }))
                 }
-                placeholder="HEATWAVE / RAIN / WIND / LOW_TEMP"
+                placeholder="폭염 / 강우 / 강풍 / 한파"
               />
             </div>
           </div>
@@ -263,6 +316,16 @@ export default function App() {
           >
             <strong>에러</strong>
             <pre>{error}</pre>
+          </section>
+        )}
+
+        {copyError && (
+          <section
+            className="card"
+            style={{ marginTop: "1rem", border: "1px solid #fecaca" }}
+          >
+            <strong>복사 오류</strong>
+            <pre>{copyError}</pre>
           </section>
         )}
 
@@ -350,9 +413,13 @@ export default function App() {
                 {preview.detailed_report}
               </pre>
               <h4>RAG Passages</h4>
-              <pre>{JSON.stringify(preview.rag_passages, null, 2)}</pre>
+              <pre>
+                {JSON.stringify(preview.rag_passages ?? "N/A", null, 2)}
+              </pre>
               <h4>Web Findings</h4>
-              <pre>{JSON.stringify(preview.web_findings, null, 2)}</pre>
+              <pre>
+                {JSON.stringify(preview.web_findings ?? "N/A", null, 2)}
+              </pre>
             </details>
           </section>
         )}
