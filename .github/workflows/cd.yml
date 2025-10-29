@@ -1,0 +1,77 @@
+name: CD - Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to server
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@$SSH_HOST << 'ENDSSH'
+            set -e
+            
+            echo "🚀 Starting deployment..."
+            
+            # 프로젝트 디렉토리로 이동
+            cd /home/ubuntu/farm-climate-reporter
+            
+            # 최신 코드 가져오기
+            echo "📥 Pulling latest code..."
+            git pull origin main
+            
+            # Docker 이미지 빌드
+            echo "🔨 Building Docker image..."
+            docker compose build --no-cache
+            
+            # 컨테이너 재시작
+            echo "♻️  Restarting containers..."
+            docker compose down
+            docker compose up -d
+            
+            # 헬스체크
+            echo "🏥 Health check..."
+            sleep 10
+            
+            if curl -f http://localhost:8080/health > /dev/null 2>&1; then
+              echo "✅ Deployment successful!"
+            else
+              echo "❌ Deployment failed - health check failed"
+              exit 1
+            fi
+            
+            # 이전 Docker 이미지 정리
+            echo "🧹 Cleaning up old images..."
+            docker image prune -f
+            
+            echo "🎉 Deployment completed!"
+          ENDSSH
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment to production was successful!"
+          else
+            echo "❌ Deployment to production failed!"
+          fi
