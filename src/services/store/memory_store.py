@@ -1,4 +1,8 @@
-"""In-memory storage used during the hackathon demo."""
+"""Storage abstraction with default in-memory implementation.
+
+If environment variable `STORE_BACKEND=postgres` is set, a Postgres-backed
+store is used instead (see `src/services/store/postgres_store.py`).
+"""
 
 from __future__ import annotations
 
@@ -9,6 +13,13 @@ from typing import Dict, Optional
 from typing import List
 
 from src.lib.models import Brief, DraftReport, Profile, RefinedReport, Signal
+
+import os
+try:
+    from .postgres_store import PostgresStore as _PgStore, StoredBrief as _PgStoredBrief
+except Exception:  # pragma: no cover - optional import
+    _PgStore = None  # type: ignore[assignment]
+    _PgStoredBrief = None  # type: ignore[assignment]
 
 
 @dataclass(slots=True)
@@ -80,7 +91,14 @@ class MemoryStore:
         return self._pending_change.get(profile_id)
 
 
-GLOBAL_STORE = MemoryStore()
+def _choose_store():
+    backend = os.environ.get("STORE_BACKEND", "").lower()
+    if backend == "postgres" and _PgStore is not None:
+        return _PgStore()
+    return MemoryStore()
+
+
+GLOBAL_STORE = _choose_store()
 
 
 def get_store() -> MemoryStore:

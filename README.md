@@ -160,6 +160,8 @@ frontend/            # React 운영자 콘솔(Vite+TS)
 - Dockerfile 포함(환경변수는 런타임에 주입)
 - 공개 링크는 애플리케이션의 `/public/briefs/{link_id}` 라우트를 직접 사용합니다.
 - SMS 본문에 포함될 링크의 베이스 URL은 `DETAIL_BASE_URL` 환경변수로 설정하세요. 예: `https://<server-domain>/public/briefs`
+
+백엔드 저장소는 기본 인메모리입니다. Postgres 사용 시 환경변수 `STORE_BACKEND=postgres`와 `DATABASE_URL`을 설정하세요. Docker Compose에는 기본 포함되어 있습니다.
 - 운영자 콘솔(`/console`) 정적 서빙: 서버가 시작될 때 다음 중 하나가 존재하면 자동 마운트됨
   - `frontend/dist` (권장: CI에서 `cd frontend && npm ci && npm run build` 후 이미지에 포함)
   - `public/console` (대체 경로)
@@ -171,3 +173,20 @@ frontend/            # React 운영자 콘솔(Vite+TS)
 - OpenAI Vector Store 사용: `.env`에 `OPENAI_VECTOR_STORE_ID`를 설정하면 LLM‑1 호출 시 `file_search` 도구로 해당 벡터스토어를 자동 첨부합니다.
 - 실제 발송 방지: `.env`에 `SOLAPI_DRY_RUN=1`
 - 번호 형식: `010…`은 자동으로 `+82…`로 변환(데모 스크립트)
+
+## 데이터베이스 마이그레이션 (SQLAlchemy + Alembic)
+
+```
+# 1) 의존성 설치 (로컬 또는 컨테이너 내)
+pip install -r requirements.txt
+
+# 2) 초기 스키마 적용
+alembic upgrade head
+
+# (선택) Docker Compose 환경에서 실행 예시
+# docker compose exec app alembic upgrade head
+
+# 3) 스키마 변경 시 자동 리비전 생성
+alembic revision -m "change schema" --autogenerate
+alembic upgrade head
+```
