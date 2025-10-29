@@ -1,4 +1,4 @@
-\"\"\"Profile resolver mapping region/crop to API identifiers.\"\"\"
+"""Profile resolver mapping region/crop to API identifiers."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ class ResolverRecord:
 
 
 class ProfileResolver:
-    \"\"\"Very small in-memory resolver for the hackathon demo.\"\"\"
+    """Very small in-memory resolver for the hackathon demo."""
 
     def __init__(self) -> None:
         self._records: dict[tuple[str, str], ResolverRecord] = {
@@ -48,7 +48,7 @@ class ProfileResolver:
         key = (profile.region.lower(), profile.crop)
         record = self._records.get(key)
         if not record:
-            raise ValueError(f\"Unsupported region/crop combination: {profile.region} / {profile.crop}\")
+            raise ValueError(f"Unsupported region/crop combination: {profile.region} / {profile.crop}")
 
         return ResolvedProfile(
             profile=profile,
@@ -60,4 +60,4 @@ class ProfileResolver:
         )
 
 
-__all__ = [\"ProfileResolver\"]
+__all__ = ["ProfileResolver"]
