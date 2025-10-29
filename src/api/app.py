@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 # Load environment variables before importing modules that may use them
 load_dotenv(dotenv_path=Path(".env"))
 
-from src.api.routes import briefs, public, webhook
+from src.api.routes import aggregate, briefs, public, webhook
 
 
 def create_app() -> FastAPI:
@@ -24,6 +24,7 @@ def create_app() -> FastAPI:
     app.include_router(briefs.router)
     app.include_router(public.router)
     app.include_router(webhook.router)
+    app.include_router(aggregate.router)
     app.mount("/static", StaticFiles(directory="src/templates/static"), name="static")
 
     return app
