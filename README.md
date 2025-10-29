@@ -13,6 +13,7 @@
 ## 아키텍처 개요
 
 - FastAPI 단일 앱(모놀리식) + Jinja2 템플릿(상세 페이지)
+- React 운영자 콘솔(선택): Vite+React+TS, 빌드 산출물 존재 시 `/console` 정적 서빙
 - SMS 벤더: SOLAPI(공식 Python SDK)
 - RAG: Vector Store + file_search/web_search(현재 스텁 수준, 해커톤 범위)
 - 배포: 단일 서버에서 백엔드와 상세 페이지를 동일 서비스 라우트로 제공
@@ -90,6 +91,27 @@ python scripts/pipeline_preview.py \
 
 콘솔과 로그 파일 모두에 RAG/LLM 결과와 SMS 본문(미발송)이 출력됩니다.
 
+### 7) React 콘솔(선택, 운영자용)
+
+```bash
+# API 서버 실행(별도 탭)
+uvicorn src.api.app:app --reload
+
+# 콘솔 실행
+cd frontend
+npm i
+npm run dev
+# Vite dev 서버가 /api/**를 127.0.0.1:8000으로 프록시
+```
+
+빌드하여 FastAPI에서 정적 서빙하려면:
+
+```bash
+cd frontend
+npm run build
+# 서버가 자동으로 frontend/dist를 /console로 서빙합니다(존재 시)
+```
+
 ## 주요 엔드포인트
 
 - POST `/api/briefs`
@@ -124,6 +146,7 @@ src/
   templates/         # 상세 페이지(Jinja2 + CSS)
 scripts/             # demo_smoke.sh
 specs/001-send-sms-brief/  # 스펙, 플랜, 계약서, 퀵스타트
+frontend/            # React 운영자 콘솔(Vite+TS)
 ```
 
 ## 개발 메모
@@ -137,6 +160,10 @@ specs/001-send-sms-brief/  # 스펙, 플랜, 계약서, 퀵스타트
 - Dockerfile 포함(환경변수는 런타임에 주입)
 - 공개 링크는 애플리케이션의 `/public/briefs/{link_id}` 라우트를 직접 사용합니다.
 - SMS 본문에 포함될 링크의 베이스 URL은 `DETAIL_BASE_URL` 환경변수로 설정하세요. 예: `https://<server-domain>/public/briefs`
+- 운영자 콘솔(`/console`) 정적 서빙: 서버가 시작될 때 다음 중 하나가 존재하면 자동 마운트됨
+  - `frontend/dist` (권장: CI에서 `cd frontend && npm ci && npm run build` 후 이미지에 포함)
+  - `public/console` (대체 경로)
+  - 없으면 `/console`은 비활성 상태
 
 ## 문제 해결(FAQ)
 
