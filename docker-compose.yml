@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    image: farm-climate-reporter:latest
+    env_file:
+      - .env
+    environment:
+      # Optional: expose a DATABASE_URL for future persistence (app currently uses in-memory store)
+      - DATABASE_URL=postgresql+psycopg2://farm_user:${POSTGRES_PASSWORD}@db:5432/farm_db
+      - TZ=Asia/Seoul
+      - STORE_BACKEND=postgres
+    ports:
+      # Nginx on the EC2 host can reverse proxy to this published port
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health').status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    volumes:
+      # Align container timezone with host (Linux hosts)
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: farm_db
+      POSTGRES_USER: farm_user
+      # You can set POSTGRES_PASSWORD in your .env to avoid keeping secrets in this file
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      TZ: Asia/Seoul
+      PGTZ: Asia/Seoul
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    command: ["postgres", "-c", "timezone=Asia/Seoul", "-c", "log_timezone=Asia/Seoul"]
+
+volumes:
+  pgdata:
