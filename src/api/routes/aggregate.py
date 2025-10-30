@@ -46,9 +46,9 @@ async def aggregate_endpoint(payload: AggregateRequest, demo: bool | None = Quer
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Aggregation failed") from exc
 
     fetched = {
-        "kma": any("KMA" in src for src in result.climate.provenance),
-        "om": any("Open-Meteo" in src for src in result.climate.provenance),
-        "npms": bool(result.pest.provenance),
+        "kma": any(src.startswith("KMA") for src in result.climate.provenance),
+        "open_meteo": any("Open-Meteo" in src for src in result.climate.provenance),
+        "npms": bool(result.pest.observations or result.pest.bulletins),
     }
     duration_ms = int((time.perf_counter() - started) * 1000)
     log_payload = {

@@ -117,6 +117,9 @@ class AggregateEvidencePack(BaseModel):
     profile: AggregateProfile
     issued_at: datetime
     climate: ClimateSection
-    pest: PestSection
-    soft_hints: SoftHints | None = None
+    pest: PestSection = Field(..., exclude=True)
+    # Textual context for LLM: SVC53-filtered style list (안동시 비영(0) 제외)
+    text: str
+    # Deterministic hints derived from observations
     pest_hints: list[str] = Field(default_factory=list)
+    soft_hints: SoftHints | None = None

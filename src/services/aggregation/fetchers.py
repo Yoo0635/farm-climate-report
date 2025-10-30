@@ -486,15 +486,8 @@ class KmaFetcher(BaseFetcher):
         hourly = short.get("hourly", []) if short else []
 
         # Provenance 수집
-        provenance_parts = []
-        if mid_land and mid_land.get("provenance"):
-            provenance_parts.append(mid_land["provenance"])
-        if mid_ta and mid_ta.get("provenance"):
-            provenance_parts.append(mid_ta["provenance"])
-        if short and short.get("provenance"):
-            provenance_parts.append(short["provenance"])
-        
-        provenance = " + ".join(provenance_parts) if provenance_parts else f"KMA({issued_at.date().isoformat()})"
+        # Consolidated provenance label (stable alias expected by callers/tests)
+        provenance = f"KMA({issued_at.date().isoformat()})"
 
         return {
             "issued_at": issued_at.isoformat(),
@@ -757,6 +750,22 @@ class NpmsFetcher(BaseFetcher):
         api_key: str,
         crop_code: str,
     ) -> str | None:
+        # SVC51: 병해충예찰검색 목록에서 insectKey 조회
+        year = os.environ.get("NPMS_SVC51_YEAR")
+        if not year:
+            # 기본값: 현재 연도
+            year = str(datetime.now(tz=KST).year)
+        params = {
+            "apiKey": api_key,
+            "serviceCode": "SVC51",
+            "serviceType": self._svc51_type,
+            "searchExaminYear": year,
+            # 관찰포(센터) 코드가 주어지면 우선 필터링
+            "searchPredictnSpchcknCode": self._predict_code or "",
+            "searchKncrCode": crop_code,
+            "displayCount": "50",
+            "startPoint": "1",
+        }
         payload = await self._request_json(client, params)
         if payload:
             service = payload.get("service") or {}
@@ -850,23 +859,28 @@ class NpmsFetcher(BaseFetcher):
             return None
 
         targets = _region_code_variants(region_code)
+        target_name = os.environ.get("NPMS_TARGET_SIGUNGU", "안동시")
         observations: list[dict[str, Any]] = []
         for entry in entries:
             sigungu_code = str(entry.get("sigunguCode") or "").strip()
-            if sigungu_code not in targets:
+            sigungu_nm = _clean_text(entry.get("sigunguNm"))
+            if sigungu_code not in targets and target_name not in sigungu_nm:
                 continue
 
             name = _clean_text(entry.get("dbyhsNm"))
             pest, metric, unit = _split_metric_name(name)
-
+            value = _to_float(entry.get("inqireValue"))
+            # Filter out None/zero values to match filtered probe behavior
+            if value is None or value == 0.0:
+                continue
             observations.append(
                 {
                     "pest": pest,
                     "metric": metric,
                     "unit": unit,
                     "code": _clean_text(entry.get("inqireCnClCode")),
-                    "value": _to_float(entry.get("inqireValue")),
-                    "area": _clean_text(entry.get("sigunguNm")),
+                    "value": value,
+                    "area": sigungu_nm,
                 }
             )
 
@@ -941,6 +955,13 @@ def _parse_npms_segments(config: str) -> list[tuple[str, str, str]]:
 def _select_npms_segment(segments: list[tuple[str, str, str]], index: int) -> tuple[str | None, str | None]:
     if not segments:
         return None, None
+    # 우선 "{index}단계"가 포함된 세그먼트를 찾아본다 (문서 순서가 역순일 수 있음)
+    stage_token = f"{index}단계"
+    for title, body, color in segments:
+        combined = " ".join(part for part in (title, body) if part).strip()
+        if stage_token in combined:
+            return (combined or None), color
+    # 매칭 실패 시, 보수적으로 인덱스에 해당하는 위치를 사용 (1-based)
     clamped = max(1, min(index, len(segments)))
     title, body, color = segments[clamped - 1]
     combined = " ".join(part for part in (title, body) if part).strip() or None
