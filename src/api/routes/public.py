@@ -9,7 +9,6 @@ from fastapi.templating import Jinja2Templates
 from src.services.briefs.plan_b import generate_plan_b
 from src.services.store.memory_store import get_store
 
-
 router = APIRouter(tags=["public"])
 templates = Jinja2Templates(directory="src/templates")
 
@@ -19,7 +18,9 @@ def read_brief_detail(link_id: str, request: Request) -> HTMLResponse:
     store = get_store()
     stored = store.resolve_link(link_id)
     if not stored:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brief not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Brief not found"
+        )
 
     brief = stored.brief
     actions = brief.actions
@@ -34,7 +35,11 @@ def read_brief_detail(link_id: str, request: Request) -> HTMLResponse:
 
     plan_b = generate_plan_b(stored.signals)
 
-    refined_lines = stored.refined_report.content.splitlines() if stored.refined_report.content else []
+    refined_lines = (
+        stored.refined_report.content.splitlines()
+        if stored.refined_report.content
+        else []
+    )
 
     return templates.TemplateResponse(
         "detail.html",

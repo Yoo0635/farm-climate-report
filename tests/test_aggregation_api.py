@@ -8,9 +8,13 @@ from fastapi.testclient import TestClient
 
 from src.api.app import create_app
 from src.services.aggregation.aggregator import AggregationService
-from src.services.aggregation.models import AggregateProfile, AggregateRequest, ResolvedProfile
-from src.services.aggregation.resolver import ProfileResolver
 from src.services.aggregation.fetchers import KmaFetcher
+from src.services.aggregation.models import (
+    AggregateProfile,
+    AggregateRequest,
+    ResolvedProfile,
+)
+from src.services.aggregation.resolver import ProfileResolver
 
 
 def _create_client() -> TestClient:
@@ -80,7 +84,14 @@ def test_aggregation_returns_text_from_npms_only() -> None:
 def test_kma_fetcher_returns_cached_payload() -> None:
     fetcher = KmaFetcher()
     profile = AggregateProfile(region="Andong-si", crop="apple", stage="flowering")
-    resolved = ResolvedProfile(profile=profile, lat=36.568, lon=128.729, kma_grid=None, kma_area_code="11H10501", npms_region_code="47170")
+    resolved = ResolvedProfile(
+        profile=profile,
+        lat=36.568,
+        lon=128.729,
+        kma_grid=None,
+        kma_area_code="11H10501",
+        npms_region_code="47170",
+    )
 
     cache_key = fetcher._cache_key(resolved)  # noqa: SLF001 - acceptable for test
     cached_payload = {"issued_at": "2025-01-01T00:00:00+09:00"}

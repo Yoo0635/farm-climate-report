@@ -210,7 +210,9 @@ class AggregationService:
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
                     summary=entry.get("summary"),
-                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
+                    precip_probability_pct=_coerce_float(
+                        entry.get("precip_probability_pct")
+                    ),
                     src="kma",
                 )
             )
@@ -263,7 +265,9 @@ class AggregationService:
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
                     summary=entry.get("summary"),
-                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
+                    precip_probability_pct=_coerce_float(
+                        entry.get("precip_probability_pct")
+                    ),
                     src="open-meteo",
                 )
             )
@@ -286,7 +290,9 @@ class AggregationService:
 
         return _NormalizedSource(issued_at, daily, hourly, [], provenance)
 
-    def _normalize_npms(self, data: dict | None, profile: AggregateProfile) -> PestSection:
+    def _normalize_npms(
+        self, data: dict | None, profile: AggregateProfile
+    ) -> PestSection:
         bulletins: list[PestBulletin] = []
         observations: list[PestObservation] = []
         provenance = []
@@ -320,7 +326,12 @@ class AggregationService:
                     )
                 )
 
-        return PestSection(crop=profile.crop, bulletins=bulletins, observations=observations, provenance=provenance)
+        return PestSection(
+            crop=profile.crop,
+            bulletins=bulletins,
+            observations=observations,
+            provenance=provenance,
+        )
 
     def _merge_daily(
         self,
@@ -340,8 +351,13 @@ class AggregationService:
                 if kma_entry:
                     if kma_entry.summary and not om_entry.summary:
                         om_entry.summary = kma_entry.summary
-                    if kma_entry.precip_probability_pct is not None and om_entry.precip_probability_pct is None:
-                        om_entry.precip_probability_pct = kma_entry.precip_probability_pct
+                    if (
+                        kma_entry.precip_probability_pct is not None
+                        and om_entry.precip_probability_pct is None
+                    ):
+                        om_entry.precip_probability_pct = (
+                            kma_entry.precip_probability_pct
+                        )
                 horizon.append(om_entry)
             elif kma_entry:
                 horizon.append(kma_entry)
@@ -385,7 +401,9 @@ def _coerce_float(value) -> float | None:  # noqa: ANN001 - dynamic typing for c
         return None
 
 
-def _coerce_datetime(value) -> datetime | None:  # noqa: ANN001 - dynamic typing for coercion
+def _coerce_datetime(
+    value,
+) -> datetime | None:  # noqa: ANN001 - dynamic typing for coercion
     if value is None:
         return None
     if isinstance(value, datetime):

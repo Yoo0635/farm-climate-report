@@ -126,13 +126,20 @@ def _lowtemp_actions() -> List[Action]:
 def map_scenario_to_actions(scenario: str) -> Tuple[List[Signal], List[Action]]:
     key = (scenario or "GENERAL").upper()
     if key == "HEATWAVE":
-        return [Signal(type="climate", code="HEATWAVE", severity="경보")], _heatwave_actions()
+        return [
+            Signal(type="climate", code="HEATWAVE", severity="경보")
+        ], _heatwave_actions()
     if key in {"RAIN", "RAIN_MULTI", "RAINY"}:
-        return [Signal(type="climate", code="RAIN_MULTI", severity="주의")], _rain_actions()
+        return [
+            Signal(type="climate", code="RAIN_MULTI", severity="주의")
+        ], _rain_actions()
     if key in {"WIND", "STRONG_WIND"}:
-        return [Signal(type="climate", code="STRONG_WIND", severity="경보")], _wind_actions()
+        return [
+            Signal(type="climate", code="STRONG_WIND", severity="경보")
+        ], _wind_actions()
     if key in {"LOW_TEMP", "LOWTEMP", "LOW-TEMP"}:
-        return [Signal(type="climate", code="LOW_TEMP", severity="주의")], _lowtemp_actions()
+        return [
+            Signal(type="climate", code="LOW_TEMP", severity="주의")
+        ], _lowtemp_actions()
     # Default: provide generic placeholders
     return [Signal(type="climate", code=key, severity="일반")], _heatwave_actions()
-

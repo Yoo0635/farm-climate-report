@@ -7,7 +7,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 SUPPORTED_CROPS = ("apple",)
 
 
@@ -22,7 +21,9 @@ class AggregateProfile(BaseModel):
 class AggregateRequest(AggregateProfile):
     """API request payload."""
 
-    demo: bool = Field(False, description="If true, return scripted demo data instead of live fetches.")
+    demo: bool = Field(
+        False, description="If true, return scripted demo data instead of live fetches."
+    )
 
 
 class ResolvedProfile(BaseModel):

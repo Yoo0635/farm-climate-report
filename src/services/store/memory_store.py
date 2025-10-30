@@ -6,17 +6,16 @@ store is used instead (see `src/services/store/postgres_store.py`).
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Optional
-
-from typing import List
+from typing import Dict, List, Optional
 
 from src.lib.models import Brief, DraftReport, Profile, RefinedReport, Signal
 
-import os
 try:
-    from .postgres_store import PostgresStore as _PgStore, StoredBrief as _PgStoredBrief
+    from .postgres_store import PostgresStore as _PgStore
+    from .postgres_store import StoredBrief as _PgStoredBrief
 except Exception:  # pragma: no cover - optional import
     _PgStore = None  # type: ignore[assignment]
     _PgStoredBrief = None  # type: ignore[assignment]

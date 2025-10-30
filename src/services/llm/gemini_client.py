@@ -22,7 +22,9 @@ class RefinementConfig:
 class GeminiRefiner:
     """Wrapper for Gemini to simplify detailed reports into SMS-ready sentences."""
 
-    def __init__(self, model: str | None = None, config: RefinementConfig | None = None) -> None:
+    def __init__(
+        self, model: str | None = None, config: RefinementConfig | None = None
+    ) -> None:
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY is required for GeminiRefiner")
@@ -47,8 +49,7 @@ class GeminiRefiner:
         """Generate the simplified output."""
         prompt = self.build_prompt(detailed_report)
         response = self._client.models.generate_content(
-            model=self._model_name,
-            contents=prompt
+            model=self._model_name, contents=prompt
         )
         return response.text.strip()
 

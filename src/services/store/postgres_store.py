@@ -11,10 +11,15 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select, desc
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
-from src.db.models import Base, Brief as ORMBrief, BriefAction as ORMAction, BriefSignal as ORMSignal, DraftReport as ORMDraft, Profile as ORMProfile, RefinedReport as ORMRefined
+from src.db.models import Brief as ORMBrief
+from src.db.models import BriefAction as ORMAction
+from src.db.models import BriefSignal as ORMSignal
+from src.db.models import DraftReport as ORMDraft
+from src.db.models import Profile as ORMProfile
+from src.db.models import RefinedReport as ORMRefined
 from src.db.session import get_session_maker
 from src.lib.models import Action, Brief, DraftReport, Profile, RefinedReport, Signal
 
@@ -112,7 +117,12 @@ class PostgresStore:
                         notes=s.notes,
                     )
                 )
-            d = ORMDraft(id=stored.draft_report.id, brief_id=b.id, content=stored.draft_report.content, created_at=stored.draft_report.created_at)
+            d = ORMDraft(
+                id=stored.draft_report.id,
+                brief_id=b.id,
+                content=stored.draft_report.content,
+                created_at=stored.draft_report.created_at,
+            )
             session.add(d)
             session.add(
                 ORMRefined(
@@ -130,14 +140,21 @@ class PostgresStore:
 
     def get_latest_brief_for_profile(self, profile_id: str) -> Optional[StoredBrief]:
         with self._session_maker() as session:
-            stmt = select(ORMBrief).where(ORMBrief.profile_id == profile_id).order_by(desc(ORMBrief.created_at)).limit(1)
+            stmt = (
+                select(ORMBrief)
+                .where(ORMBrief.profile_id == profile_id)
+                .order_by(desc(ORMBrief.created_at))
+                .limit(1)
+            )
             row = session.scalar(stmt)
             if not row:
                 return None
             return self._load_stored_brief_by(session, brief_id=row.id)
 
     # Link APIs
-    def save_link(self, link_id: str, brief_id: str) -> None:  # no-op, link_id persisted on brief
+    def save_link(
+        self, link_id: str, brief_id: str
+    ) -> None:  # no-op, link_id persisted on brief
         return None
 
     def resolve_link(self, link_id: str) -> Optional[StoredBrief]:
@@ -184,15 +201,31 @@ class PostgresStore:
                 )
             )
 
-    def _load_stored_brief_by(self, session: Session, *, brief_id: str) -> Optional[StoredBrief]:
+    def _load_stored_brief_by(
+        self, session: Session, *, brief_id: str
+    ) -> Optional[StoredBrief]:
         b = session.get(ORMBrief, brief_id)
         if not b:
             return None
         p = session.get(ORMProfile, b.profile_id)
-        actions = session.scalars(select(ORMAction).where(ORMAction.brief_id == brief_id)).all()
-        signals = session.scalars(select(ORMSignal).where(ORMSignal.brief_id == brief_id)).all()
-        draft = session.scalar(select(ORMDraft).where(ORMDraft.brief_id == brief_id).order_by(ORMDraft.created_at.desc()).limit(1))
-        refined = session.scalar(select(ORMRefined).join(ORMDraft, ORMRefined.draft_id == ORMDraft.id).where(ORMDraft.brief_id == brief_id).limit(1))
+        actions = session.scalars(
+            select(ORMAction).where(ORMAction.brief_id == brief_id)
+        ).all()
+        signals = session.scalars(
+            select(ORMSignal).where(ORMSignal.brief_id == brief_id)
+        ).all()
+        draft = session.scalar(
+            select(ORMDraft)
+            .where(ORMDraft.brief_id == brief_id)
+            .order_by(ORMDraft.created_at.desc())
+            .limit(1)
+        )
+        refined = session.scalar(
+            select(ORMRefined)
+            .join(ORMDraft, ORMRefined.draft_id == ORMDraft.id)
+            .where(ORMDraft.brief_id == brief_id)
+            .limit(1)
+        )
 
         profile = Profile(
             id=p.id,
@@ -223,15 +256,45 @@ class PostgresStore:
             date_range=b.date_range,
             created_at=b.created_at,
         )
-        draft_report = DraftReport(id=draft.id, brief_id=draft.brief_id, content=draft.content, created_at=draft.created_at) if draft else DraftReport(id="", brief_id=b.id, content="", created_at=datetime.utcnow())
-        refined_report = (
-            RefinedReport(id=refined.id, draft_id=refined.draft_id, content=refined.content, created_at=refined.created_at)
-            if refined
-            else RefinedReport(id="", draft_id=draft_report.id, content="", created_at=datetime.utcnow())
+        draft_report = (
+            DraftReport(
+                id=draft.id,
+                brief_id=draft.brief_id,
+                content=draft.content,
+                created_at=draft.created_at,
+            )
+            if draft
+            else DraftReport(
+                id="", brief_id=b.id, content="", created_at=datetime.utcnow()
+            )
         )
-        sig_models = [Signal(type=s.type, code=s.code, severity=s.severity, notes=s.notes) for s in signals]
-        return StoredBrief(profile=profile, brief=brief, draft_report=draft_report, refined_report=refined_report, sms_body="", signals=sig_models)
+        refined_report = (
+            RefinedReport(
+                id=refined.id,
+                draft_id=refined.draft_id,
+                content=refined.content,
+                created_at=refined.created_at,
+            )
+            if refined
+            else RefinedReport(
+                id="",
+                draft_id=draft_report.id,
+                content="",
+                created_at=datetime.utcnow(),
+            )
+        )
+        sig_models = [
+            Signal(type=s.type, code=s.code, severity=s.severity, notes=s.notes)
+            for s in signals
+        ]
+        return StoredBrief(
+            profile=profile,
+            brief=brief,
+            draft_report=draft_report,
+            refined_report=refined_report,
+            sms_body="",
+            signals=sig_models,
+        )
 
 
 __all__ = ["PostgresStore", "StoredBrief"]
-

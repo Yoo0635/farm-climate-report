@@ -77,7 +77,9 @@ def _rain_run_max_days(daily: list[ClimateDaily]) -> int | None:
     return best or None
 
 
-def _count_hours(hourly: list[ClimateHourly], field: str, threshold: float) -> int | None:
+def _count_hours(
+    hourly: list[ClimateHourly], field: str, threshold: float
+) -> int | None:
     total = 0
     for entry in hourly:
         value = getattr(entry, field, None)

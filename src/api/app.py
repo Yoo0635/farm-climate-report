@@ -14,6 +14,10 @@ from src.api.routes import aggregate, briefs, public, webhook, reports
 
 def create_app() -> FastAPI:
     """Application factory to ease testing."""
+    load_dotenv(dotenv_path=Path(".env"))
+
+    from src.api.routes import aggregate, briefs, public, webhook
+
     app = FastAPI(title="Farm Climate Reporter MVP")
 
     @app.get("/health", tags=["health"])
@@ -35,11 +39,19 @@ def create_app() -> FastAPI:
     frontend_build_path = Path("frontend/dist")
     if frontend_build_path.exists():
         # Mount React static assets (JS, CSS, images, etc.)
-        app.mount("/assets", StaticFiles(directory=str(frontend_build_path / "assets")), name="assets")
-        
+        app.mount(
+            "/assets",
+            StaticFiles(directory=str(frontend_build_path / "assets")),
+            name="assets",
+        )
+
         # Serve React app at root with SPA fallback
         # This catches all remaining routes and serves index.html
-        app.mount("/", StaticFiles(directory=str(frontend_build_path), html=True), name="react-app")
+        app.mount(
+            "/",
+            StaticFiles(directory=str(frontend_build_path), html=True),
+            name="react-app",
+        )
 
     return app
 

@@ -6,7 +6,6 @@ from textwrap import shorten
 
 from src.lib.format_ko import format_for_sms
 
-
 LINK_PREFIX = "상세보기:"
 
 

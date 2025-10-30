@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Sequence
 
 from src.lib.models import Action, Profile, Signal
+from src.services.llm.factory import build_llm_stack
 from src.services.llm.gemini_client import GeminiRefiner
 from src.services.llm.openai_client import OpenAILLM
-from src.services.llm.factory import build_llm_stack
 
 
 @dataclass(slots=True)
@@ -24,6 +24,7 @@ class BriefGenerationContext:
 @dataclass(slots=True)
 class BriefGenerationResult:
     """Outputs from the generation pipeline."""
+
     detailed_report: str
     refined_report: str
 
@@ -49,7 +50,9 @@ class BriefGenerator:
         detailed_prompt = self._build_detailed_prompt(context)
         detailed_report = self._llm_primary.generate_report(detailed_prompt)
         refined = self._llm_refiner.refine(detailed_report)
-        return BriefGenerationResult(detailed_report=detailed_report, refined_report=refined)
+        return BriefGenerationResult(
+            detailed_report=detailed_report, refined_report=refined
+        )
 
     def _build_detailed_prompt(self, context: BriefGenerationContext) -> str:
         action_summary = "\n".join(

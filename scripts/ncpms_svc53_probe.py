@@ -27,7 +27,14 @@ except ImportError:  # pragma: no cover - optional dependency
     load_dotenv = None
 
 
-def build_request(api_key: str, insect_key: str, sido_code: str, *, service_type: str = "AA003", base_url: str = "http://ncpms.rda.go.kr/npmsAPI/service") -> tuple[str, dict[str, str]]:
+def build_request(
+    api_key: str,
+    insect_key: str,
+    sido_code: str,
+    *,
+    service_type: str = "AA003",
+    base_url: str = "http://ncpms.rda.go.kr/npmsAPI/service",
+) -> tuple[str, dict[str, str]]:
     params = {
         "apiKey": api_key,
         "serviceCode": "SVC53",
@@ -82,7 +89,11 @@ def _summarize_service(payload: dict[str, Any], *, sigungu_filter: str | None) -
 
     if sigungu_filter:
         sigungu_filter = sigungu_filter.strip()
-        entries = [item for item in entries if item.get("sigunguNm") and sigungu_filter in item["sigunguNm"]]
+        entries = [
+            item
+            for item in entries
+            if item.get("sigunguNm") and sigungu_filter in item["sigunguNm"]
+        ]
 
     if not entries:
         print("No records matched the filters.")
@@ -94,7 +105,9 @@ def _summarize_service(payload: dict[str, Any], *, sigungu_filter: str | None) -
         pest_name = item.get("dbyhsNm")
         value = item.get("inqireValue")
         detail = item.get("inqireCnClCode")
-        print(f"{idx}. {sigungu_nm}({sigungu_code}) — {pest_name} [{detail}] value={value}")
+        print(
+            f"{idx}. {sigungu_nm}({sigungu_code}) — {pest_name} [{detail}] value={value}"
+        )
 
 
 def main(argv: list[str]) -> int:
@@ -121,13 +134,20 @@ def main(argv: list[str]) -> int:
 
     api_key = args.npms_key or os.environ.get("NPMS_API_KEY")
     if not api_key:
-        print("NPMS key missing. Export NPMS_API_KEY or pass --npms-key.", file=sys.stderr)
+        print(
+            "NPMS key missing. Export NPMS_API_KEY or pass --npms-key.", file=sys.stderr
+        )
         return 1
     if not args.insect_key or not args.sido_code:
-        print("insectKey and sidoCode are required. Pass via flags or env (NPMS_DEFAULT_INSECT_KEY, NPMS_DEFAULT_SIDO).", file=sys.stderr)
+        print(
+            "insectKey and sidoCode are required. Pass via flags or env (NPMS_DEFAULT_INSECT_KEY, NPMS_DEFAULT_SIDO).",
+            file=sys.stderr,
+        )
         return 2
 
-    base_url, params = build_request(api_key, args.insect_key, args.sido_code, service_type=args.service_type)
+    base_url, params = build_request(
+        api_key, args.insect_key, args.sido_code, service_type=args.service_type
+    )
 
     if args.show_curl:
         print_curl(base_url, params)

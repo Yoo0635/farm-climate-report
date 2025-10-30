@@ -31,7 +31,9 @@ class BaseFetcher:
     async def _get_client(self) -> httpx.AsyncClient:
         async with self._lock:
             if self._client is None:
-                self._client = httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0, read=10.0))
+                self._client = httpx.AsyncClient(
+                    timeout=httpx.Timeout(10.0, connect=5.0, read=10.0)
+                )
         return self._client
 
     async def aclose(self) -> None:
@@ -50,15 +52,21 @@ class KmaFetcher(BaseFetcher):
 
     def __init__(self, auth_key: str | None = None) -> None:
         super().__init__(ttl_seconds=60 * 60, maxsize=16)
-        self._auth_key = auth_key or _env_first("KMA_API_KEY", "KMA_AUTH_KEY", "KMA_SERVICE_KEY")
-        self._base_url = os.environ.get("KMA_API_BASE_URL", "https://apihub.kma.go.kr/api/typ02/openApi")
+        self._auth_key = auth_key or _env_first(
+            "KMA_API_KEY", "KMA_AUTH_KEY", "KMA_SERVICE_KEY"
+        )
+        self._base_url = os.environ.get(
+            "KMA_API_BASE_URL", "https://apihub.kma.go.kr/api/typ02/openApi"
+        )
 
     async def fetch(self, resolved: ResolvedProfile) -> dict | None:
         key = self._cache_key(resolved)
         if key in self._cache:
             return self._cache[key]
 
-        auth_key = self._auth_key or _env_first("KMA_API_KEY", "KMA_AUTH_KEY", "KMA_SERVICE_KEY")
+        auth_key = self._auth_key or _env_first(
+            "KMA_API_KEY", "KMA_AUTH_KEY", "KMA_SERVICE_KEY"
+        )
         if not auth_key:
             logger.warning("KMA fetch skipped — API key not configured")
             return None
@@ -241,14 +249,20 @@ class KmaFetcher(BaseFetcher):
                     candidates.add(candidate)
         return sorted(candidates, reverse=True)
 
-    def _parse_mid_land(self, payload: dict[str, Any], tmfc_dt: datetime, reg_id: str) -> dict | None:
+    def _parse_mid_land(
+        self, payload: dict[str, Any], tmfc_dt: datetime, reg_id: str
+    ) -> dict | None:
         """Extract daily summaries from KMA MidFcstInfoService response."""
         response = payload.get("response")
         if not isinstance(response, dict):
             return None
         header = response.get("header") or {}
         if header.get("resultCode") != "00":
-            logger.info("KMA MidFcst returned resultCode=%s message=%s", header.get("resultCode"), header.get("resultMsg"))
+            logger.info(
+                "KMA MidFcst returned resultCode=%s message=%s",
+                header.get("resultCode"),
+                header.get("resultMsg"),
+            )
             return None
 
         body = response.get("body") or {}
@@ -290,7 +304,9 @@ class KmaFetcher(BaseFetcher):
             "warnings": [],
         }
 
-    def _build_mid_land_day(self, data: dict[str, Any], tmfc_dt: datetime, day: int, *, am_pm: bool) -> dict[str, Any] | None:
+    def _build_mid_land_day(
+        self, data: dict[str, Any], tmfc_dt: datetime, day: int, *, am_pm: bool
+    ) -> dict[str, Any] | None:
         summary_parts: list[str] = []
         chance_values: list[float] = []
 
@@ -321,7 +337,9 @@ class KmaFetcher(BaseFetcher):
         if summary_parts:
             entry["summary"] = " / ".join(summary_parts)
         if chance_values:
-            entry["precip_probability_pct"] = round(sum(chance_values) / len(chance_values), 1)
+            entry["precip_probability_pct"] = round(
+                sum(chance_values) / len(chance_values), 1
+            )
         return entry
 
     def _parse_mid_ta(self, payload: dict[str, Any], tmfc_dt: datetime, reg_id: str) -> dict | None:
@@ -520,7 +538,9 @@ class OpenMeteoFetcher(BaseFetcher):
 
     def __init__(self, base_url: str | None = None) -> None:
         super().__init__(ttl_seconds=3 * 60 * 60, maxsize=32)
-        self._base_url = base_url or os.environ.get("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast")
+        self._base_url = base_url or os.environ.get(
+            "OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast"
+        )
 
     async def fetch(self, resolved: ResolvedProfile) -> dict | None:
         key = self._cache_key(resolved)
@@ -541,7 +561,12 @@ class OpenMeteoFetcher(BaseFetcher):
             response = await client.get(self._base_url, params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            logger.warning("Open-Meteo request failed (lat=%.3f lon=%.3f): %s", resolved.lat, resolved.lon, exc)
+            logger.warning(
+                "Open-Meteo request failed (lat=%.3f lon=%.3f): %s",
+                resolved.lat,
+                resolved.lon,
+                exc,
+            )
             return None
 
         try:
@@ -639,7 +664,9 @@ class NpmsFetcher(BaseFetcher):
     def __init__(self, api_key: str | None = None) -> None:
         super().__init__(ttl_seconds=12 * 60 * 60, maxsize=16)
         self._api_key = api_key or os.environ.get("NPMS_API_KEY")
-        self._base_url = os.environ.get("NPMS_API_BASE_URL", "http://ncpms.rda.go.kr/npmsAPI/service")
+        self._base_url = os.environ.get(
+            "NPMS_API_BASE_URL", "http://ncpms.rda.go.kr/npmsAPI/service"
+        )
         self._predict_code = os.environ.get("NPMS_DEFAULT_PREDICT_CODE", "00209")
         self._svc51_type = os.environ.get("NPMS_SVC51_TYPE", "AA003")
         self._svc53_type = os.environ.get("NPMS_SVC53_TYPE", "AA003")
@@ -657,12 +684,19 @@ class NpmsFetcher(BaseFetcher):
 
         crop_code = self._CROP_CODE_MAP.get(resolved.profile.crop)
         if not crop_code:
-            logger.info("NPMS fetch skipped — crop not supported (crop=%s)", resolved.profile.crop)
+            logger.info(
+                "NPMS fetch skipped — crop not supported (crop=%s)",
+                resolved.profile.crop,
+            )
             return None
 
         client = await self._get_client()
-        bulletins = await self._fetch_bulletins(client, api_key, resolved.profile.crop, crop_code)
-        observations = await self._fetch_observations(client, api_key, resolved, crop_code)
+        bulletins = await self._fetch_bulletins(
+            client, api_key, resolved.profile.crop, crop_code
+        )
+        observations = await self._fetch_observations(
+            client, api_key, resolved, crop_code
+        )
 
         if not bulletins and not observations:
             return None
@@ -791,12 +825,18 @@ class NpmsFetcher(BaseFetcher):
             return self._default_insect_key
         return None
 
-    async def _request_json(self, client: httpx.AsyncClient, params: dict[str, str]) -> dict[str, Any] | None:
+    async def _request_json(
+        self, client: httpx.AsyncClient, params: dict[str, str]
+    ) -> dict[str, Any] | None:
         try:
             response = await client.get(self._base_url, params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            logger.warning("NPMS request failed (serviceCode=%s): %s", params.get("serviceCode"), exc)
+            logger.warning(
+                "NPMS request failed (serviceCode=%s): %s",
+                params.get("serviceCode"),
+                exc,
+            )
             return None
 
         try:
@@ -805,7 +845,9 @@ class NpmsFetcher(BaseFetcher):
             logger.warning("NPMS returned non-JSON payload: %s", exc)
             return None
 
-    def _parse_npms_bulletins(self, payload: dict[str, Any], crop: str, crop_code: str) -> dict[str, Any] | None:
+    def _parse_npms_bulletins(
+        self, payload: dict[str, Any], crop: str, crop_code: str
+    ) -> dict[str, Any] | None:
         service = payload.get("service") or {}
         models = service.get("pestModelByKncrList") or []
         if isinstance(models, dict):
@@ -817,7 +859,10 @@ class NpmsFetcher(BaseFetcher):
         seen_pests: set[str] = set()
 
         for raw_entry in models:
-            entry = {_clean_text(k): _clean_text(unquote(str(v))) for k, v in raw_entry.items()}
+            entry = {
+                _clean_text(k): _clean_text(unquote(str(v)))
+                for k, v in raw_entry.items()
+            }
             if entry.get("kncrCode") != crop_code:
                 continue
 
@@ -850,7 +895,9 @@ class NpmsFetcher(BaseFetcher):
             "provenance": f"NPMS-SVC31({issued_at.date().isoformat()})",
         }
 
-    def _parse_npms_observations(self, payload: dict[str, Any], region_code: str) -> dict[str, Any] | None:
+    def _parse_npms_observations(
+        self, payload: dict[str, Any], region_code: str
+    ) -> dict[str, Any] | None:
         service = payload.get("service") or {}
         entries = service.get("structList") or []
         if isinstance(entries, dict):
@@ -952,7 +999,9 @@ def _parse_npms_segments(config: str) -> list[tuple[str, str, str]]:
     return segments
 
 
-def _select_npms_segment(segments: list[tuple[str, str, str]], index: int) -> tuple[str | None, str | None]:
+def _select_npms_segment(
+    segments: list[tuple[str, str, str]], index: int
+) -> tuple[str | None, str | None]:
     if not segments:
         return None, None
     # 우선 "{index}단계"가 포함된 세그먼트를 찾아본다 (문서 순서가 역순일 수 있음)

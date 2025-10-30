@@ -14,13 +14,19 @@ class DemoBundle:
     kma: dict
     open_meteo: dict
     npms: dict
+
+
 def _build_andong_apple() -> DemoBundle:
     issued_at = datetime(2025, 10, 30, 6, 0, tzinfo=KST)
     base_date = issued_at.date().isoformat()
 
     kma_daily = [
         {"date": "2025-11-02", "summary": "맑음", "precip_probability_pct": 10.0},
-        {"date": "2025-11-03", "summary": "맑음 / 구름많음", "precip_probability_pct": 20.0},
+        {
+            "date": "2025-11-03",
+            "summary": "맑음 / 구름많음",
+            "precip_probability_pct": 20.0,
+        },
         {"date": "2025-11-04", "summary": "구름많음", "precip_probability_pct": 30.0},
         {"date": "2025-11-05", "summary": "흐림", "precip_probability_pct": 40.0},
         {"date": "2025-11-06", "summary": "흐리고 비", "precip_probability_pct": 60.0},
@@ -37,17 +43,83 @@ def _build_andong_apple() -> DemoBundle:
     }
 
     om_daily = [
-        {"date": "2025-10-30", "tmax_c": 21.5, "tmin_c": 8.2, "precip_mm": 0.0, "wind_ms": 2.8},
-        {"date": "2025-10-31", "tmax_c": 22.1, "tmin_c": 9.0, "precip_mm": 0.0, "wind_ms": 3.1},
-        {"date": "2025-11-01", "tmax_c": 21.0, "tmin_c": 8.5, "precip_mm": 0.4, "wind_ms": 2.5},
-        {"date": "2025-11-02", "tmax_c": 20.4, "tmin_c": 7.8, "precip_mm": 0.0, "wind_ms": 2.9},
-        {"date": "2025-11-03", "tmax_c": 19.8, "tmin_c": 6.9, "precip_mm": 0.0, "wind_ms": 2.7},
-        {"date": "2025-11-04", "tmax_c": 18.6, "tmin_c": 6.5, "precip_mm": 1.2, "wind_ms": 2.4},
-        {"date": "2025-11-05", "tmax_c": 17.2, "tmin_c": 5.9, "precip_mm": 3.0, "wind_ms": 3.0},
-        {"date": "2025-11-06", "tmax_c": 18.8, "tmin_c": 6.7, "precip_mm": 0.6, "wind_ms": 2.6},
-        {"date": "2025-11-07", "tmax_c": 19.5, "tmin_c": 7.1, "precip_mm": 0.0, "wind_ms": 2.3},
-        {"date": "2025-11-08", "tmax_c": 20.3, "tmin_c": 7.5, "precip_mm": 0.0, "wind_ms": 2.1},
-        {"date": "2025-11-09", "tmax_c": 21.0, "tmin_c": 8.0, "precip_mm": 0.0, "wind_ms": 2.4},
+        {
+            "date": "2025-10-30",
+            "tmax_c": 21.5,
+            "tmin_c": 8.2,
+            "precip_mm": 0.0,
+            "wind_ms": 2.8,
+        },
+        {
+            "date": "2025-10-31",
+            "tmax_c": 22.1,
+            "tmin_c": 9.0,
+            "precip_mm": 0.0,
+            "wind_ms": 3.1,
+        },
+        {
+            "date": "2025-11-01",
+            "tmax_c": 21.0,
+            "tmin_c": 8.5,
+            "precip_mm": 0.4,
+            "wind_ms": 2.5,
+        },
+        {
+            "date": "2025-11-02",
+            "tmax_c": 20.4,
+            "tmin_c": 7.8,
+            "precip_mm": 0.0,
+            "wind_ms": 2.9,
+        },
+        {
+            "date": "2025-11-03",
+            "tmax_c": 19.8,
+            "tmin_c": 6.9,
+            "precip_mm": 0.0,
+            "wind_ms": 2.7,
+        },
+        {
+            "date": "2025-11-04",
+            "tmax_c": 18.6,
+            "tmin_c": 6.5,
+            "precip_mm": 1.2,
+            "wind_ms": 2.4,
+        },
+        {
+            "date": "2025-11-05",
+            "tmax_c": 17.2,
+            "tmin_c": 5.9,
+            "precip_mm": 3.0,
+            "wind_ms": 3.0,
+        },
+        {
+            "date": "2025-11-06",
+            "tmax_c": 18.8,
+            "tmin_c": 6.7,
+            "precip_mm": 0.6,
+            "wind_ms": 2.6,
+        },
+        {
+            "date": "2025-11-07",
+            "tmax_c": 19.5,
+            "tmin_c": 7.1,
+            "precip_mm": 0.0,
+            "wind_ms": 2.3,
+        },
+        {
+            "date": "2025-11-08",
+            "tmax_c": 20.3,
+            "tmin_c": 7.5,
+            "precip_mm": 0.0,
+            "wind_ms": 2.1,
+        },
+        {
+            "date": "2025-11-09",
+            "tmax_c": 21.0,
+            "tmin_c": 8.0,
+            "precip_mm": 0.0,
+            "wind_ms": 2.4,
+        },
     ]
 
     om_hourly = []

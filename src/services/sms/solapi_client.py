@@ -10,8 +10,9 @@ import os
 from dataclasses import dataclass
 from typing import Any
 
-from solapi import SolapiMessageService
 from solapi.model import RequestMessage
+
+from solapi import SolapiMessageService
 
 
 class SolapiError(RuntimeError):
@@ -54,7 +55,11 @@ class SolapiClient:
     """SOLAPI client using the official SDK."""
 
     def __init__(self, config: SolapiConfig | None = None) -> None:
-        self._dry_run = os.environ.get("SOLAPI_DRY_RUN", "").lower() in {"1", "true", "yes"}
+        self._dry_run = os.environ.get("SOLAPI_DRY_RUN", "").lower() in {
+            "1",
+            "true",
+            "yes",
+        }
         self.config = config or SolapiConfig.from_env()
         if not self._dry_run:
             self.config.validate()
@@ -71,14 +76,20 @@ class SolapiClient:
 
         # SDK path
         try:
-            svc = SolapiMessageService(api_key=self.config.access_key, api_secret=self.config.secret_key)
-            msg = RequestMessage(from_=self.config.sender_number, to=recipient, text=text)
+            svc = SolapiMessageService(
+                api_key=self.config.access_key, api_secret=self.config.secret_key
+            )
+            msg = RequestMessage(
+                from_=self.config.sender_number, to=recipient, text=text
+            )
             resp = svc.send(msg)
             # Normalize to dict for our API surface
             return {
                 "status": "ok",
                 "group_id": getattr(resp.group_info, "group_id", None),
-                "registered_success": getattr(resp.group_info.count, "registered_success", None),
+                "registered_success": getattr(
+                    resp.group_info.count, "registered_success", None
+                ),
             }
         except Exception as exc:  # noqa: BLE001 - surface as service error
             raise SolapiError(str(exc)) from exc

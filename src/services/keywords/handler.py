@@ -14,7 +14,11 @@ from src.services.store.memory_store import get_store
 class KeywordHandler:
     def __init__(self, link_service: LinkService | None = None) -> None:
         self._store = get_store()
-        self._link_service = link_service or LinkService(base_url=os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs"))
+        self._link_service = link_service or LinkService(
+            base_url=os.environ.get(
+                "DETAIL_BASE_URL", "https://example.com/public/briefs"
+            )
+        )
         self._change_flow = ChangeFlow(self._store)
 
     def handle(self, profile_id: str, message: str) -> str:
