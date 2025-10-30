@@ -22,7 +22,6 @@ paths:
                 region: { type: string }
                 crop: { type: string }
                 stage: { type: string }
-                scenario: { type: string, description: Optional demo scenario (e.g., HEATWAVE) }
       responses:
         '200':
           description: Brief sent (or queued) for delivery

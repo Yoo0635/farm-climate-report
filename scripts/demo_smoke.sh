@@ -21,7 +21,7 @@ to_e164() {
 }
 
 # Recipient number priority: PHONE env > DEMO_RECIPIENT_NUMBER > default
-RAW_RECIPIENT=${PHONE:-${DEMO_RECIPIENT_NUMBER:-"+821012345678"}} || true
+RAW_RECIPIENT=${PHONE:-${DEMO_RECIPIENT_NUMBER:-"01022168618"}} || true
 RECIPIENT="$(to_e164 "$RAW_RECIPIENT")"
 
 # Derive service number (the number users text to) from .env if available
@@ -32,7 +32,7 @@ SERVICE_TO="$(to_e164 "$RAW_SENDER")"
 echo "→ Triggering brief (to: $RECIPIENT)"
 curl -sS -X POST "$API_BASE/api/briefs" \
   -H 'Content-Type: application/json' \
-  -d '{"phone":"'$RECIPIENT'","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}' | jq
+  -d '{"phone":"'$RECIPIENT'","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering"}' | jq
 
 echo "→ Simulating REPORT keyword (from: $RECIPIENT → to: $SERVICE_TO)"
 curl -sS -X POST "$API_BASE/api/sms/webhook" \

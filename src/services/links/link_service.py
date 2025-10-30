@@ -15,7 +15,7 @@ class LinkRecord:
 
 
 class LinkService:
-    def __init__(self, base_url: str = "https://example.com/public/briefs") -> None:
+    def __init__(self, base_url: str = "https://parut.com/public/briefs") -> None:
         self._base_url = base_url.rstrip("/")
         self._store = get_store()
 

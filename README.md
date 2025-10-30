@@ -52,7 +52,7 @@ SOLAPI_DRY_RUN=1
 # 상세 페이지 베이스 URL(서버 배포 시)
 # 배포한 서버의 기본 URL 뒤에 /public/briefs 경로를 붙여 지정
 # 예: https://your-server-domain/public/briefs
-DETAIL_BASE_URL=https://your-server-domain/public/briefs
+DETAIL_BASE_URL=https://parut.com/public/briefs
 # LLM 오프라인/스텁 모드(선택): 1/true/yes 또는 LLM_MODE=fake
 LLM_OFFLINE=1
 ```
@@ -80,7 +80,7 @@ PHONE="+8210XXXXXXXX" API_BASE=http://127.0.0.1:8000 ./scripts/demo_smoke.sh
 ```bash
 # 오프라인(스텁 LLM)으로 실행 + 로그 파일 저장
 python scripts/pipeline_preview.py \
-  --region KR/Seoul --crop Strawberry --stage Flowering --scenario HEATWAVE \
+  --region KR/Seoul --crop Strawberry --stage Flowering \
   --offline --log logs/pipeline.log
 
 # 온라인(실제 LLM)으로 실행하려면 --offline 제거 및 API 키 설정 필요
@@ -117,13 +117,13 @@ npm run build
 - POST `/api/briefs`
   - 본문 예시:
     ```json
-    {"phone":"+8210XXXXYYYY","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}
+    {"phone":"+821022168618","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering"}
     ```
   - 동작: RAG → LLM‑1 → LLM‑2 → 링크 생성 → SMS 1건 발송
 - POST `/api/briefs/preview`
   - 본문 예시:
     ```json
-    {"region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}
+    {"region":"KR/Seoul","crop":"Strawberry","stage":"Flowering"}
     ```
   - 동작: RAG → LLM‑1 → LLM‑2 결과를 JSON으로 반환(SMS 미발송). `LLM_OFFLINE=1`이면 네트워크 없이 스텁 LLM으로 동작.
 - POST `/api/sms/webhook`
@@ -159,7 +159,7 @@ frontend/            # React 운영자 콘솔(Vite+TS)
 
 - Dockerfile 포함(환경변수는 런타임에 주입)
 - 공개 링크는 애플리케이션의 `/public/briefs/{link_id}` 라우트를 직접 사용합니다.
-- SMS 본문에 포함될 링크의 베이스 URL은 `DETAIL_BASE_URL` 환경변수로 설정하세요. 예: `https://<server-domain>/public/briefs`
+- SMS 본문에 포함될 링크의 베이스 URL은 `DETAIL_BASE_URL` 환경변수로 설정하세요. (기본값: `https://parut.com/public/briefs`)
 
 백엔드 저장소는 기본 인메모리입니다. Postgres 사용 시 환경변수 `STORE_BACKEND=postgres`와 `DATABASE_URL`을 설정하세요. Docker Compose에는 기본 포함되어 있습니다.
 - 운영자 콘솔(`/console`) 정적 서빙: 서버가 시작될 때 다음 중 하나가 존재하면 자동 마운트됨

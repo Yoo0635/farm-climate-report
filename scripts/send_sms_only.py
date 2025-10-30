@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -19,14 +20,40 @@ for cand in [
     if cand.exists():
         load_dotenv(cand, override=False)
 
-SOLAPI_API_KEY = os.getenv("SOLAPI_API_KEY")
-SOLAPI_API_SECRET = os.getenv("SOLAPI_API_SECRET")
-SOLAPI_FROM = os.getenv("SOLAPI_FROM_NUMBER")
+LEGACY_ENV_NAMES = {
+    "SOLAPI_ACCESS_KEY": ["SOLAPI_API_KEY"],
+    "SOLAPI_SECRET_KEY": ["SOLAPI_API_SECRET"],
+    "SOLAPI_SENDER_NUMBER": ["SOLAPI_FROM_NUMBER"],
+}
+
+
+def _env(name: str) -> tuple[str | None, bool]:
+    current = os.getenv(name)
+    if current:
+        return current, False
+    for legacy in LEGACY_ENV_NAMES.get(name, []):
+        value = os.getenv(legacy)
+        if value:
+            return value, True
+    return None, False
+
+
+SOLAPI_ACCESS_KEY, key_from_legacy = _env("SOLAPI_ACCESS_KEY")
+SOLAPI_SECRET_KEY, secret_from_legacy = _env("SOLAPI_SECRET_KEY")
+SOLAPI_SENDER_NUMBER, sender_from_legacy = _env("SOLAPI_SENDER_NUMBER")
+
+if key_from_legacy or secret_from_legacy or sender_from_legacy:
+    print(
+        "[WARN] Legacy SOLAPI_* environment variables detected; "
+        "please migrate to SOLAPI_ACCESS_KEY / SOLAPI_SECRET_KEY / SOLAPI_SENDER_NUMBER.",
+        file=sys.stderr,
+    )
+
 DRYRUN_ENABLED = os.getenv("DRYRUN", "1") == "1"
 
 svc = None
-if not DRYRUN_ENABLED and SOLAPI_API_KEY and SOLAPI_API_SECRET:
-    svc = SolapiMessageService(api_key=SOLAPI_API_KEY, api_secret=SOLAPI_API_SECRET)
+if not DRYRUN_ENABLED and SOLAPI_ACCESS_KEY and SOLAPI_SECRET_KEY:
+    svc = SolapiMessageService(api_key=SOLAPI_ACCESS_KEY, api_secret=SOLAPI_SECRET_KEY)
 
 
 def render_text(rec: Dict[str, Any]) -> str:
@@ -57,7 +84,7 @@ def send_one(to: str, text: str) -> Dict[str, Any]:
                 {"status_code": "DRYRUN", "status_message": "사용자 요청(드라이런)"}
             ],
         }
-    if not svc or not SOLAPI_FROM:
+    if not svc or not SOLAPI_SENDER_NUMBER:
         return {
             "to": to,
             "group_id": None,
@@ -65,14 +92,14 @@ def send_one(to: str, text: str) -> Dict[str, Any]:
                 {"status_code": "DRYRUN", "status_message": "환경변수 없음(드라이런)"}
             ],
         }
-    if to == SOLAPI_FROM:
+    if to == SOLAPI_SENDER_NUMBER:
         return {
             "to": to,
             "group_id": None,
             "failed": [{"status_code": "SELF", "status_message": "FROM과 TO가 동일"}],
         }
     try:
-        msg = RequestMessage(from_=SOLAPI_FROM, to=to, text=text)
+        msg = RequestMessage(from_=SOLAPI_SENDER_NUMBER, to=to, text=text)
         resp = svc.send(msg)
         gid = getattr(getattr(resp, "group_info", None), "group_id", None)
         fm = getattr(resp, "failed_messages", None) or []
@@ -128,7 +155,7 @@ def main():
                     json.dumps(
                         {
                             "src_line": i,
-                            "from": SOLAPI_FROM,
+                            "from": SOLAPI_SENDER_NUMBER,
                             "result": {"error": "NO_RECIPIENT"},
                         }
                     )
@@ -154,7 +181,7 @@ def main():
                     res = send_one(to, body)
                 lf.write(
                     json.dumps(
-                        {"src_line": i, "from": SOLAPI_FROM, "result": res},
+                        {"src_line": i, "from": SOLAPI_SENDER_NUMBER, "result": res},
                         ensure_ascii=False,
                     )
                     + "\n"
@@ -166,7 +193,12 @@ def main():
 
     print(
         json.dumps(
-            {"ok": True, "from": SOLAPI_FROM, "sent": count, "log": str(logf)},
+            {
+                "ok": True,
+                "from": SOLAPI_SENDER_NUMBER,
+                "sent": count,
+                "log": str(logf),
+            },
             ensure_ascii=False,
         )
     )
