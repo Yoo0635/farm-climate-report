@@ -5,11 +5,11 @@ echo "📊 Docker Container Status"
 echo "=========================="
 echo ""
 
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "💾 Disk Usage:"
-docker-compose exec app df -h | grep -E '(Filesystem|/app)'
+docker compose exec app df -h | grep -E '(Filesystem|/app)'
 
 echo ""
 echo "🔍 Health Check:"

@@ -4,13 +4,13 @@
 set -e
 
 echo "🔄 Restarting Docker containers..."
-docker-compose restart
+docker compose restart
 
 echo ""
 echo "✅ Containers restarted!"
 echo ""
 echo "📊 Container status:"
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "📝 View logs: ./scripts/docker-logs.sh"

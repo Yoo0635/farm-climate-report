@@ -4,9 +4,9 @@
 set -e
 
 echo "🗑️  Stopping and removing Docker containers..."
-docker-compose down
+docker compose down
 
 echo ""
 echo "✅ Containers removed!"
 echo ""
-echo "💡 To also remove volumes, use: docker-compose down -v"
+echo "💡 To also remove volumes, use: docker compose down -v"

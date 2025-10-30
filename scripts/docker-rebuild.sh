@@ -4,18 +4,18 @@
 set -e
 
 echo "🔨 Rebuilding Docker images..."
-docker-compose down
-docker-compose build --no-cache
+docker compose down
+docker compose build --no-cache
 
 echo ""
 echo "🚀 Starting containers..."
-docker-compose up -d
+docker compose up -d
 
 echo ""
 echo "✅ Rebuild complete!"
 echo ""
 echo "📊 Container status:"
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "📝 View logs: ./scripts/docker-logs.sh"

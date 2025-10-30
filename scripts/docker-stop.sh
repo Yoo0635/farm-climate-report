@@ -4,9 +4,9 @@
 set -e
 
 echo "🛑 Stopping Docker containers..."
-docker-compose stop
+docker compose stop
 
 echo ""
 echo "✅ Containers stopped!"
 echo ""
-docker-compose ps
+docker compose ps

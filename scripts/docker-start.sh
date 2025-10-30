@@ -4,13 +4,13 @@
 set -e
 
 echo "🚀 Starting Docker containers..."
-docker-compose up -d
+docker compose up -d
 
 echo ""
 echo "✅ Containers started!"
 echo ""
 echo "📊 Container status:"
-docker-compose ps
+docker compose ps
 
 echo ""
 echo "🔗 Access URLs:"
