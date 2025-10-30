@@ -57,7 +57,9 @@ class FakeGeminiRefiner:
     def refine(self, detailed_report: str) -> str:
         # Take first N lines and compress into concise bullets.
         lines: Sequence[str] = [
-            l.strip() for l in detailed_report.splitlines() if l.strip()
+            line_text.strip()
+            for line_text in detailed_report.splitlines()
+            if line_text.strip()
         ]
         bullets: list[str] = []
         for line in lines[: self.max_sentences]:

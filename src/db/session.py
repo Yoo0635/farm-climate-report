@@ -10,7 +10,7 @@ import os
 from typing import Callable
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 
 def _database_url() -> str:
@@ -25,7 +25,7 @@ def get_engine():
     return create_engine(_database_url(), pool_pre_ping=True, future=True)
 
 
-def get_session_maker() -> Callable[[], "Session"]:
+def get_session_maker() -> Callable[[], Session]:
     return sessionmaker(
         bind=get_engine(), autoflush=False, autocommit=False, future=True
     )

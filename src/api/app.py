@@ -6,14 +6,13 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-# Load environment variables before importing modules that may use them
-load_dotenv(dotenv_path=Path(".env"))
-
-from src.api.routes import aggregate, briefs, public, webhook
-
 
 def create_app() -> FastAPI:
     """Application factory to ease testing."""
+    load_dotenv(dotenv_path=Path(".env"))
+
+    from src.api.routes import aggregate, briefs, public, webhook
+
     app = FastAPI(title="Farm Climate Reporter MVP")
 
     @app.get("/health", tags=["health"])

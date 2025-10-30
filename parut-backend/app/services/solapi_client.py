@@ -16,13 +16,40 @@ load_dotenv(override=True)
 _API_KEY = os.getenv("SOLAPI_API_KEY")
 _API_SECRET = os.getenv("SOLAPI_API_SECRET")
 _FROM = os.getenv("SOLAPI_FROM_NUMBER")
+DRYRUN = os.getenv("DRYRUN", "1") == "1"
 
-if not (_API_KEY and _API_SECRET and _FROM):
+_svc: Optional[SolapiMessageService]
+if DRYRUN:
+    _svc = None
+elif not (_API_KEY and _API_SECRET and _FROM):
     raise RuntimeError(
         "SOLAPI env vars missing: SOLAPI_API_KEY / SOLAPI_API_SECRET / SOLAPI_FROM_NUMBER"
     )
+else:
+    _svc = SolapiMessageService(api_key=_API_KEY, api_secret=_API_SECRET)
 
-_svc = SolapiMessageService(api_key=_API_KEY, api_secret=_API_SECRET)
+
+def _dryrun_detail(channel: str, quick_present: bool) -> dict:
+    marker = {"status_code": "DRYRUN", "status_message": "dry-run mode"}
+    detail = {"rcs_failed": None, "sms_failed": None}
+    if quick_present:
+        detail["rcs_failed"] = [marker]
+    if not quick_present or channel == "SMS":
+        detail["sms_failed"] = [marker]
+    return {"channel": channel, "group_id": None, "detail": detail}
+
+
+def _self_detail(channel: str, quick_present: bool) -> dict:
+    marker = {"status_code": "SELF", "status_message": "sender equals recipient"}
+    detail = {"rcs_failed": None, "sms_failed": [marker]}
+    if quick_present:
+        detail["rcs_failed"] = [marker]
+    return {
+        "channel": channel,
+        "group_id": None,
+        "detail": detail,
+        "error": "SenderEqualsRecipient",
+    }
 
 
 def _byte_len(s: str) -> int:
@@ -93,6 +120,8 @@ def _gid(resp) -> Optional[str]:
 
 
 def _send_sms_via_sdk(to: str, text: str):
+    if _svc is None:
+        raise RuntimeError("Solapi SDK unavailable in dry-run mode")
     msg = RequestMessage(from_=_FROM, to=to, text=text)
     resp = _svc.send(msg)
     return {"channel": "SMS", "group_id": _gid(resp)}
@@ -101,6 +130,14 @@ def _send_sms_via_sdk(to: str, text: str):
 def send_rcs_or_sms(
     to: str, text: str, quick=[("완료", "1"), ("도움요청", "2"), ("보류", "3")]
 ):
+    quick_present = bool(quick)
+    if (_FROM or "") and to.strip() == (_FROM or "").strip():
+        return _self_detail(
+            "RCS" if quick_present else "SMS",
+            quick_present,
+        )
+    if DRYRUN:
+        return _dryrun_detail("RCS" if quick_present else "SMS", quick_present)
     detail = {"rcs_failed": None, "sms_failed": None}
     if not quick:
         try:
@@ -146,4 +183,4 @@ def send_rcs_or_sms(
 
 
 def send_sms(to: str, text: str):
-    return _send_sms_via_sdk(to, text)
+    return send_rcs_or_sms(to, text, quick=[])

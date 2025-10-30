@@ -694,6 +694,11 @@ def _select_npms_segment(
 ) -> tuple[str | None, str | None]:
     if not segments:
         return None, None
+    stage_prefix = f"{index}단계"
+    for title, body, color in segments:
+        if title.startswith(stage_prefix):
+            combined = " ".join(part for part in (title, body) if part).strip() or None
+            return combined, color
     clamped = max(1, min(index, len(segments)))
     title, body, color = segments[clamped - 1]
     combined = " ".join(part for part in (title, body) if part).strip() or None

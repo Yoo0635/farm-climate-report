@@ -1,15 +1,15 @@
 import os
 from typing import List, Optional
 
+from app.services.solapi_client import send_rcs_or_sms
+from app.services.workflows import run_numeric_workflow
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
+from pydantic import BaseModel
 
 load_dotenv()
 
-from pydantic import BaseModel
 
-
-# (레포 모델이 변동돼도 독립적으로 동작하도록 최소 모델 포함)
 class TodoItem(BaseModel):
     step: str
     materials: List[str] = []
@@ -29,9 +29,6 @@ class AlertSpec(BaseModel):
     fallback: Optional[str] = None
     to: List[str]
 
-
-from app.services.solapi_client import send_rcs_or_sms
-from app.services.workflows import run_numeric_workflow
 
 WEBHOOK_TOKEN = os.getenv("WEBHOOK_VERIFY_TOKEN", "")
 

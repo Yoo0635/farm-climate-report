@@ -21,17 +21,32 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Ensure project root is importable when invoked directly
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.lib.models import Profile
-from src.lib.policy import validate_actions
-from src.services.briefs.citations import append_citations
-from src.services.briefs.generator import BriefGenerationContext, BriefGenerator
-from src.services.briefs.sms_builder import build_sms
-from src.services.signals.mappings import map_scenario_to_actions
+
+def _ensure_project_root() -> None:
+    if str(PROJECT_ROOT) not in sys.path:
+        sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _load_pipeline_modules():
+    _ensure_project_root()
+    from src.lib.models import Profile
+    from src.lib.policy import validate_actions
+    from src.services.briefs.citations import append_citations
+    from src.services.briefs.generator import BriefGenerationContext, BriefGenerator
+    from src.services.briefs.sms_builder import build_sms
+    from src.services.signals.mappings import map_scenario_to_actions
+
+    return (
+        Profile,
+        validate_actions,
+        append_citations,
+        BriefGenerationContext,
+        BriefGenerator,
+        build_sms,
+        map_scenario_to_actions,
+    )
 
 
 def _build_logger(log_path: Path) -> logging.Logger:
@@ -87,6 +102,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     load_dotenv(PROJECT_ROOT / ".env")
+    (
+        Profile,
+        validate_actions,
+        append_citations,
+        BriefGenerationContext,
+        BriefGenerator,
+        build_sms,
+        map_scenario_to_actions,
+    ) = _load_pipeline_modules()
     args = parse_args(argv)
 
     if args.offline:

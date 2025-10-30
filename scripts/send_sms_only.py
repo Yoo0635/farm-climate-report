@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from dotenv import find_dotenv, load_dotenv
+from solapi.model import RequestMessage
+
+from solapi import SolapiMessageService
 
 # .env 로딩(루트/하위 모두 탐색)
 load_dotenv(find_dotenv(usecwd=True), override=False)
@@ -19,14 +22,10 @@ for cand in [
 SOLAPI_API_KEY = os.getenv("SOLAPI_API_KEY")
 SOLAPI_API_SECRET = os.getenv("SOLAPI_API_SECRET")
 SOLAPI_FROM = os.getenv("SOLAPI_FROM_NUMBER")
-
-from solapi.model import RequestMessage
-
-# SDK
-from solapi import SolapiMessageService
+DRYRUN_ENABLED = os.getenv("DRYRUN", "1") == "1"
 
 svc = None
-if SOLAPI_API_KEY and SOLAPI_API_SECRET:
+if not DRYRUN_ENABLED and SOLAPI_API_KEY and SOLAPI_API_SECRET:
     svc = SolapiMessageService(api_key=SOLAPI_API_KEY, api_secret=SOLAPI_API_SECRET)
 
 
@@ -50,6 +49,14 @@ def to_list(s: str) -> List[str]:
 
 
 def send_one(to: str, text: str) -> Dict[str, Any]:
+    if DRYRUN_ENABLED:
+        return {
+            "to": to,
+            "group_id": None,
+            "failed": [
+                {"status_code": "DRYRUN", "status_message": "사용자 요청(드라이런)"}
+            ],
+        }
     if not svc or not SOLAPI_FROM:
         return {
             "to": to,

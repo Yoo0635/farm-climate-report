@@ -5,6 +5,11 @@ import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
+from solapi.model import RequestMessage
+
+from solapi import SolapiMessageService
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 try:
     from lib.format_ko import format_for_sms
@@ -22,8 +27,6 @@ except Exception:
         ).strip()
 
 
-from dotenv import load_dotenv
-
 root_env = Path(__file__).resolve().parents[1] / ".env"
 back_env = Path(__file__).resolve().parents[1] / "parut-backend" / ".env"
 for env_path in (root_env, back_env):
@@ -33,21 +36,34 @@ for env_path in (root_env, back_env):
 API_KEY = os.getenv("SOLAPI_API_KEY") or os.getenv("SOLAPI_ACCESS_KEY")
 API_SECRET = os.getenv("SOLAPI_API_SECRET") or os.getenv("SOLAPI_SECRET_KEY")
 FROM = os.getenv("SOLAPI_FROM_NUMBER") or os.getenv("SOLAPI_SENDER_NUMBER")
-if not (API_KEY and API_SECRET and FROM):
+DRYRUN_ENABLED = os.getenv("DRYRUN", "1") == "1"
+if not DRYRUN_ENABLED and not (API_KEY and API_SECRET and FROM):
     print(
         "[ERR] SOLAPI_* 값이 없습니다. (.env에 키/시크릿/발신번호 필요)",
         file=sys.stderr,
     )
     sys.exit(2)
 
-from solapi.model import RequestMessage
-
-from solapi import SolapiMessageService
-
-svc = SolapiMessageService(api_key=API_KEY, api_secret=API_SECRET)
+svc = None
+if not DRYRUN_ENABLED:
+    svc = SolapiMessageService(api_key=API_KEY, api_secret=API_SECRET)
 
 
 def send_sms(to: str, text: str):
+    if DRYRUN_ENABLED:
+        return {
+            "to": to,
+            "group_id": None,
+            "failed": [
+                {"status_code": "DRYRUN", "status_message": "dry-run mode enabled"}
+            ],
+        }
+    if to == FROM:
+        return {
+            "to": to,
+            "group_id": None,
+            "failed": [{"status_code": "SELF", "status_message": "FROM과 TO가 동일"}],
+        }
     msg = RequestMessage(from_=FROM, to=to, text=text)
     resp = svc.send(msg)
     gid = getattr(getattr(resp, "group_info", None), "group_id", None)
