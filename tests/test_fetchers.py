@@ -123,7 +123,7 @@ def test_npms_fetcher_returns_bulletins() -> None:
     async def _run() -> None:
         fetcher = NpmsFetcher(api_key="dummy-key")
 
-        npms_payload = {
+        svc31_payload = {
             "service": {
                 "pestModelByKncrList": [
                     {
@@ -137,8 +137,49 @@ def test_npms_fetcher_returns_bulletins() -> None:
             }
         }
 
-        def handler(_: httpx.Request) -> httpx.Response:
-            return httpx.Response(200, json=npms_payload)
+        svc51_payload = {
+            "service": {
+                "list": [
+                    {
+                        "predictnSpchcknCode": "00209",
+                        "insectKey": "202500209FT01060101322008",
+                        "examinTmrd": "8",
+                        "inputStdrDatetm": "20250901",
+                    }
+                ]
+            }
+        }
+
+        svc53_payload = {
+            "service": {
+                "structList": [
+                    {
+                        "dbyhsNm": "사과굴나방(트랩당마리수)",
+                        "inqireCnClCode": "SS0128",
+                        "inqireValue": "12.4",
+                        "sigunguNm": "안동시",
+                        "sigunguCode": "4717",
+                    },
+                    {
+                        "dbyhsNm": "사과굴나방(트랩당마리수)",
+                        "inqireCnClCode": "SS0128",
+                        "inqireValue": "99.9",
+                        "sigunguNm": "상주시",
+                        "sigunguCode": "4725",
+                    },
+                ]
+            }
+        }
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            service_code = request.url.params.get("serviceCode")
+            if service_code == "SVC31":
+                return httpx.Response(200, json=svc31_payload)
+            if service_code == "SVC51":
+                return httpx.Response(200, json=svc51_payload)
+            if service_code == "SVC53":
+                return httpx.Response(200, json=svc53_payload)
+            return httpx.Response(404, json={"error": "unexpected serviceCode"})
 
         fetcher._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))  # noqa: SLF001 - testing internal override
         result = await fetcher.fetch(_resolved_profile())
@@ -151,5 +192,12 @@ def test_npms_fetcher_returns_bulletins() -> None:
         assert first["risk"] == "HIGH"
         assert "발생" in first["summary"]
         assert first["since"] == "2025-10-04"
+        assert result["observations"], "Expected observation records"
+        obs = result["observations"][0]
+        assert obs["pest"] == "사과굴나방"
+        assert obs["metric"] == "트랩당마리수"
+        assert obs["area"] == "안동시"
+        assert obs["value"] == pytest.approx(12.4)
+        assert len(result.get("provenance", [])) >= 2
 
     asyncio.run(_run())

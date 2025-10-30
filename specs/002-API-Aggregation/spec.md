@@ -70,11 +70,17 @@ Keep (decision-driving only):
   "issued_at":"ISO8601+09:00",
   "crop":"apple",
   "bulletins":[ {"pest":"name-ko","risk":"LOW|MODERATE|HIGH|ALERT","since":"YYYY-MM-DD","summary":"1–2 lines ko"} ],
-  "provenance":"NPMS(YYYY-MM-DD)"
+  "observations":[ {"area":"안동시","pest":"name-ko","metric":"트랩당마리수","code":"SS0128","value":93.6} ],
+  "provenance":["NPMS-SVC31(YYYY-MM-DD)","NPMS-SVC53(YYYY-MM-DD)"]
 }
 ```
 
 *Drop encyclopedic pages, non-target crops, and historical counts.*
+
+> Implementation note:  
+> * Bulletins derive from **SVC31** (crop model).  
+> * `observations` derive from **SVC51→SVC53** (예찰 목록 → 예찰 상세).  
+> * For MVP we only resolve `insectKey` for Andong-si apples (predict code `00209`), filtering `sigunguCode` to 안동시.
 
 ---
 
@@ -92,6 +98,7 @@ Keep (decision-driving only):
 * **Numeric daily + hourly**: use **Open‑Meteo** as primary across D0–D10; use `src="open-meteo"`.
 * **KMA mid‑term summaries**: surface as `daily[].summary` and `daily[].precip_probability_pct` when available; do not overwrite numeric fields.
 * **Warnings**: from **KMA** when accessible; otherwise omit (empty array).
+* **Pest observations**: only include SVC53 rows whose `sigunguCode` matches 안동시; surface as `observations` alongside bulletins.
 * Keep arrays **as provided** (no averaging); annotate each element with `src` where applicable.
 
 ---
@@ -133,7 +140,8 @@ Compute once to help the model, but **never force decisions**:
   "pest":{
     "crop":"apple",
     "bulletins":[ {"pest":"갈색무늬병","risk":"MODERATE","since":"2025-10-27","summary":"강수 후 전엽기 환기·위생관리 강화"} ],
-    "provenance":[ "NPMS(2025-10-27)" ]
+    "observations":[ {"area":"안동시","pest":"사과굴나방","metric":"트랩당마리수","code":"SS0128","value":93.6} ],
+    "provenance":[ "NPMS-SVC31(2025-10-27)", "NPMS-SVC53(2025-10-27)" ]
   },
   "soft_hints":{
     "rain_run_max_days":2,"heat_hours_ge_33c":6,"wind_hours_ge_10ms":0,"wet_nights_count":1,"diurnal_range_max":12,"first_warning_type":"HEAT"

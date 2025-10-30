@@ -31,6 +31,7 @@ def test_aggregate_demo_succeeds() -> None:
     first_day = data["climate"]["daily"][0]
     assert first_day["src"] == "open-meteo"
     assert any(day.get("summary") for day in data["climate"]["daily"])
+    assert data["pest"]["observations"], "Expected pest observations in demo payload"
     assert data["soft_hints"]["rain_run_max_days"] >= 1
 
 

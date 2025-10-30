@@ -88,9 +88,19 @@ class PestBulletin(BaseModel):
     summary: str
 
 
+class PestObservation(BaseModel):
+    pest: str
+    metric: str
+    code: str
+    value: float | None = None
+    area: str
+    unit: str | None = None
+
+
 class PestSection(BaseModel):
     crop: Literal["apple"]
     bulletins: list[PestBulletin]
+    observations: list[PestObservation] = Field(default_factory=list)
     provenance: list[str]
 
 

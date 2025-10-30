@@ -89,6 +89,18 @@ GET http://ncpms.rda.go.kr/npmsAPI/service
 - Requests with the current key respond with `{"service":{}}`.
 - Required parameters per official guide: `width` (optional), `cropList` (array), but functionality could be locked.
 
+### SVC51 — Observation Listing (예찰 목록)
+- Returns observation runs (`insectKey`) per crop/예찰구분. Used as a precursor to SVC53.
+- Key params: `searchKncrCode` (crop code), optional `searchPredictnSpchcknCode` (e.g. 관찰포 `00209`), `searchExaminYear`, pagination (`displayCount` ≤ 50).
+- Helpful fields: `insectKey`, `predictnSpchcknCode`/`Nm`, `examinSpchcknCode`/`Nm`, `examinTmrd`, `inputStdrDatetm`.
+- Sorting tip: sort by `inputStdrDatetm` (descending) and `examinTmrd` to obtain the latest run.
+
+### SVC53 — Observation Detail (예찰 검색)
+- Requires `insectKey` (from SVC51) and `sidoCode` (광역시/도 코드; 경북=47).
+- Responds with `structList` entries per 시군구 (`sigunguNm`, `sigunguCode`).
+- Each entry provides `dbyhsNm` (pest + metric), `inqireCnClCode` (metric code), `inqireValue` (numeric), enabling filtering to a target 시군구 (안동시=4717).
+- Combine SVC31 (risk) + SVC53 (observed values) for richer pest context.
+
 ## 4. Integration Notes
 - The codebase’s `NpmsFetcher` currently:
   - Requires `NPMS_API_KEY` or explicit key injection.

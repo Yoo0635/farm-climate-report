@@ -93,7 +93,23 @@ def _build_andong_apple() -> DemoBundle:
                 "summary": "일교차 큰 기간 꽃눈 주변 병반 점검",
             },
         ],
-        "provenance": "NPMS(2025-10-29)",
+        "observations": [
+            {
+                "pest": "사과굴나방",
+                "metric": "트랩당마리수",
+                "code": "SS0128",
+                "value": 92.4,
+                "area": "안동시",
+            },
+            {
+                "pest": "갈색무늬병",
+                "metric": "병든잎률",
+                "code": "SS0101",
+                "value": 0.0,
+                "area": "안동시",
+            },
+        ],
+        "provenance": ["NPMS(2025-10-29)", "NPMS-SVC53(2025-10-29)"],
     }
 
     return DemoBundle(kma=kma, open_meteo=open_meteo, npms=npms)

@@ -9,7 +9,8 @@
 
 Monolithic FastAPI aggregator for a single scenario: Andong‑si apple orchards.
 Accept `region,crop,stage`, resolve Andong IDs, fetch KMA mid‑term summaries,
-Open‑Meteo numeric daily/hourly, and NPMS apple bulletins. Perform minimal
+Open‑Meteo numeric daily/hourly, and NPMS apple bulletins **plus Andong 예찰
+observations (SVC51→SVC53)**. Perform minimal
 normalization (KST timestamps, units, unified keys), compute optional
 deterministic soft hints, and return one Evidence Pack for the LLM.
 
@@ -30,7 +31,9 @@ continue with available sources and explicit provenance.
 
 Implementation notes:
 - Resolver: preload `("andong-si","apple")` → `{ lat: 36.568, lon: 128.729, kma_area_code: "11H10501" }`.
-- Fetchers: parallelize KMA (MidFcstInfoService summaries), Open‑Meteo (numeric), NPMS (SVC31 apple) with httpx/urllib; timeouts + TTL cache.
+- Fetchers: parallelize KMA (MidFcstInfoService summaries), Open‑Meteo (numeric),
+  NPMS SVC31 (apple risk bulletins) **and SVC51→SVC53 (Andong observation metrics)**
+  with httpx/urllib; timeouts + TTL cache.
 - Normalization: keys/units unified; timestamps → ISO8601 +09:00; daily `date` = `YYYY-MM-DD`.
 - Merge policy: numeric = Open‑Meteo primary; KMA `summary/precip_probability_pct` attached alongside numeric; warnings from KMA when available.
 - Soft hints: deterministic calculations (rain runs, heat/wind hours, wet nights, diurnal range, first warning type) — advisory only.
@@ -58,7 +61,8 @@ Implementation notes:
 
 3) Resolver + fetchers
 - Add `("andong-si","apple")` record to resolver.
-- NPMS: ensure apple code `FT010601` is supported; parse and map risk indices to LOW/MODERATE/HIGH/ALERT.
+- NPMS: ensure apple code `FT010601` is supported; parse and map risk indices to LOW/MODERATE/HIGH/ALERT; **resolve SVC51 insectKey and map SVC53
+  안동 observations into structured metrics.**
 
 4) Merge policy + soft hints
 - Implement Open‑Meteo primary numeric with KMA summary overlay; keep provenance; compute soft hints.

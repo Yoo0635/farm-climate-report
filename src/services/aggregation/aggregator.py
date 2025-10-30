@@ -18,6 +18,7 @@ from src.services.aggregation.models import (
     ClimateHourly,
     ClimateSection,
     PestBulletin,
+    PestObservation,
     PestSection,
     WeatherWarning,
 )
@@ -215,12 +216,15 @@ class AggregationService:
 
     def _normalize_npms(self, data: dict | None, profile: AggregateProfile) -> PestSection:
         bulletins: list[PestBulletin] = []
+        observations: list[PestObservation] = []
         provenance = []
 
         if data:
             provenance_value = data.get("provenance")
-            if provenance_value:
+            if isinstance(provenance_value, str):
                 provenance.append(provenance_value)
+            elif isinstance(provenance_value, list):
+                provenance.extend(str(item) for item in provenance_value if item)
 
             for entry in data.get("bulletins", []) or []:
                 bulletins.append(
@@ -232,7 +236,19 @@ class AggregationService:
                     )
                 )
 
-        return PestSection(crop=profile.crop, bulletins=bulletins, provenance=provenance)
+            for entry in data.get("observations", []) or []:
+                observations.append(
+                    PestObservation(
+                        pest=entry.get("pest", ""),
+                        metric=entry.get("metric", ""),
+                        code=entry.get("code", ""),
+                        value=_coerce_float(entry.get("value")),
+                        area=entry.get("area", ""),
+                        unit=entry.get("unit"),
+                    )
+                )
+
+        return PestSection(crop=profile.crop, bulletins=bulletins, observations=observations, provenance=provenance)
 
     def _merge_daily(
         self,

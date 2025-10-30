@@ -323,6 +323,9 @@ class NpmsFetcher(BaseFetcher):
         super().__init__(ttl_seconds=12 * 60 * 60, maxsize=16)
         self._api_key = api_key or os.environ.get("NPMS_API_KEY")
         self._base_url = os.environ.get("NPMS_API_BASE_URL", "http://ncpms.rda.go.kr/npmsAPI/service")
+        self._predict_code = os.environ.get("NPMS_DEFAULT_PREDICT_CODE", "00209")
+        self._svc51_type = os.environ.get("NPMS_SVC51_TYPE", "AA003")
+        self._svc53_type = os.environ.get("NPMS_SVC53_TYPE", "AA003")
 
     async def fetch(self, resolved: ResolvedProfile) -> dict | None:
         key = self._cache_key(resolved)
@@ -339,6 +342,48 @@ class NpmsFetcher(BaseFetcher):
             logger.info("NPMS fetch skipped — crop not supported (crop=%s)", resolved.profile.crop)
             return None
 
+        client = await self._get_client()
+        bulletins = await self._fetch_bulletins(client, api_key, resolved.profile.crop, crop_code)
+        observations = await self._fetch_observations(client, api_key, resolved, crop_code)
+
+        if not bulletins and not observations:
+            return None
+
+        issued_at = None
+        provenance: list[str] = []
+        payload: dict[str, Any] = {
+            "crop": resolved.profile.crop,
+            "bulletins": [],
+            "observations": [],
+        }
+
+        if bulletins:
+            issued_at = bulletins.get("issued_at")
+            payload["bulletins"] = bulletins.get("bulletins", [])
+            _merge_provenance(provenance, bulletins.get("provenance"))
+
+        if observations:
+            issued_at = issued_at or observations.get("issued_at")
+            payload["observations"] = observations.get("observations", [])
+            _merge_provenance(provenance, observations.get("provenance"))
+
+        if issued_at is None:
+            issued_at = datetime.now(tz=KST).isoformat()
+
+        payload["issued_at"] = issued_at
+        if provenance:
+            payload["provenance"] = provenance
+
+        self._cache[key] = payload
+        return payload
+
+    async def _fetch_bulletins(
+        self,
+        client: httpx.AsyncClient,
+        api_key: str,
+        crop: str,
+        crop_code: str,
+    ) -> dict[str, Any] | None:
         params = {
             "apiKey": api_key,
             "serviceCode": "SVC31",
@@ -347,28 +392,95 @@ class NpmsFetcher(BaseFetcher):
             "cropList": crop_code,
         }
 
-        client = await self._get_client()
+        payload = await self._request_json(client, params)
+        if payload is None:
+            return None
+
+        return self._parse_npms_bulletins(payload, crop, crop_code)
+
+    async def _fetch_observations(
+        self,
+        client: httpx.AsyncClient,
+        api_key: str,
+        resolved: ResolvedProfile,
+        crop_code: str,
+    ) -> dict[str, Any] | None:
+        if not resolved.npms_region_code:
+            return None
+
+        insect_key = await self._lookup_insect_key(client, api_key, crop_code)
+        if not insect_key:
+            return None
+
+        params = {
+            "apiKey": api_key,
+            "serviceCode": "SVC53",
+            "serviceType": self._svc53_type,
+            "insectKey": insect_key,
+            "sidoCode": _derive_sido_code(resolved.npms_region_code),
+        }
+
+        payload = await self._request_json(client, params)
+        if payload is None:
+            return None
+
+        return self._parse_npms_observations(payload, resolved.npms_region_code)
+
+    async def _lookup_insect_key(
+        self,
+        client: httpx.AsyncClient,
+        api_key: str,
+        crop_code: str,
+    ) -> str | None:
+        params = {
+            "apiKey": api_key,
+            "serviceCode": "SVC51",
+            "serviceType": self._svc51_type,
+            "searchKncrCode": crop_code,
+            "displayCount": "50",
+            "startPoint": "1",
+        }
+
+        payload = await self._request_json(client, params)
+        if payload is None:
+            return None
+
+        service = payload.get("service") or {}
+        entries = service.get("list") or []
+        if isinstance(entries, dict):
+            entries = [entries]
+        if not entries:
+            return None
+
+        filtered = []
+        for entry in entries:
+            if self._predict_code and entry.get("predictnSpchcknCode") != self._predict_code:
+                continue
+            filtered.append(entry)
+
+        candidates = filtered or entries
+        candidates.sort(key=_svc51_sort_key, reverse=True)
+        for entry in candidates:
+            insect_key = entry.get("insectKey")
+            if insect_key:
+                return insect_key
+        return None
+
+    async def _request_json(self, client: httpx.AsyncClient, params: dict[str, str]) -> dict[str, Any] | None:
         try:
             response = await client.get(self._base_url, params=params)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            logger.warning("NPMS request failed (crop=%s): %s", resolved.profile.crop, exc)
+            logger.warning("NPMS request failed (serviceCode=%s): %s", params.get("serviceCode"), exc)
             return None
 
         try:
-            payload = response.json()
+            return response.json()
         except ValueError as exc:  # pragma: no cover - defensive
             logger.warning("NPMS returned non-JSON payload: %s", exc)
             return None
 
-        parsed = self._parse_npms(payload, resolved.profile.crop, crop_code)
-        if parsed is None:
-            return None
-
-        self._cache[key] = parsed
-        return parsed
-
-    def _parse_npms(self, payload: dict[str, Any], crop: str, crop_code: str) -> dict | None:
+    def _parse_npms_bulletins(self, payload: dict[str, Any], crop: str, crop_code: str) -> dict[str, Any] | None:
         service = payload.get("service") or {}
         models = service.get("pestModelByKncrList") or []
         if isinstance(models, dict):
@@ -404,16 +516,52 @@ class NpmsFetcher(BaseFetcher):
             )
             seen_pests.add(pest_name)
 
-        if not bulletins:
-            return None
-
         bulletins.sort(key=lambda entry: self._RISK_ORDER.get(entry["risk"], 99))
         issued_at = datetime.now(tz=KST)
         return {
             "issued_at": issued_at.isoformat(),
             "crop": crop,
             "bulletins": bulletins[:5],
-            "provenance": f"NPMS({issued_at.date().isoformat()})",
+            "provenance": f"NPMS-SVC31({issued_at.date().isoformat()})",
+        }
+
+    def _parse_npms_observations(self, payload: dict[str, Any], region_code: str) -> dict[str, Any] | None:
+        service = payload.get("service") or {}
+        entries = service.get("structList") or []
+        if isinstance(entries, dict):
+            entries = [entries]
+        if not entries:
+            return None
+
+        targets = _region_code_variants(region_code)
+        observations: list[dict[str, Any]] = []
+        for entry in entries:
+            sigungu_code = str(entry.get("sigunguCode") or "").strip()
+            if sigungu_code not in targets:
+                continue
+
+            name = _clean_text(entry.get("dbyhsNm"))
+            pest, metric, unit = _split_metric_name(name)
+
+            observations.append(
+                {
+                    "pest": pest,
+                    "metric": metric,
+                    "unit": unit,
+                    "code": _clean_text(entry.get("inqireCnClCode")),
+                    "value": _to_float(entry.get("inqireValue")),
+                    "area": _clean_text(entry.get("sigunguNm")),
+                }
+            )
+
+        if not observations:
+            return None
+
+        issued_at = datetime.now(tz=KST)
+        return {
+            "issued_at": issued_at.isoformat(),
+            "observations": observations,
+            "provenance": f"NPMS-SVC53({issued_at.date().isoformat()})",
         }
 
 
@@ -503,6 +651,55 @@ def _parse_npms_datetime(value: str | None) -> str | None:
         except ValueError:
             continue
     return None
+
+
+def _merge_provenance(container: list[str], value: Any) -> None:
+    if not value:
+        return
+    if isinstance(value, str):
+        container.append(value)
+    elif isinstance(value, list):
+        for item in value:
+            if item:
+                container.append(str(item))
+
+
+def _svc51_sort_key(entry: dict[str, Any]) -> tuple[int, int]:
+    raw_date = str(entry.get("inputStdrDatetm") or "")
+    try:
+        date_val = int(raw_date)
+    except ValueError:
+        date_val = 0
+    tmrd = _to_int(entry.get("examinTmrd"), default=0)
+    return date_val, tmrd
+
+
+def _derive_sido_code(region_code: str) -> str:
+    text = str(region_code).strip()
+    if len(text) >= 2:
+        return text[:2]
+    return text
+
+
+def _region_code_variants(region_code: str) -> set[str]:
+    text = str(region_code).strip()
+    variants = {
+        text,
+        text.rstrip("0"),
+        text.lstrip("0"),
+        text[:4],
+        text[:5],
+    }
+    return {variant for variant in variants if variant}
+
+
+def _split_metric_name(name: str) -> tuple[str, str, str | None]:
+    cleaned = _clean_text(name)
+    if "(" in cleaned and cleaned.endswith(")"):
+        pest, rest = cleaned.split("(", 1)
+        metric = rest.rstrip(")")
+        return pest.strip(), metric.strip(), None
+    return cleaned, "", None
 
 
 __all__ = ["KmaFetcher", "OpenMeteoFetcher", "NpmsFetcher"]
