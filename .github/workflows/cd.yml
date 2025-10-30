@@ -36,9 +36,10 @@ jobs:
             # 프로젝트 디렉토리로 이동
             cd /home/ubuntu/farm-climate-reporter
             
-            # 최신 코드 가져오기
+            # 최신 코드 가져오기 (로컬 변경사항 무시)
             echo "📥 Pulling latest code..."
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             
             # Docker 이미지 빌드
             echo "🔨 Building Docker image..."
