@@ -17,6 +17,7 @@ from src.services.aggregation.aggregator import get_aggregation_service
 from src.services.aggregation.models import AggregateEvidencePack, AggregateRequest
 from src.services.reports.prompt import build_evidence_prompt
 from src.services.llm.factory import build_llm_stack
+from src.services.llm.gemini_client import GeminiRefiner
 
 
 @dataclass(slots=True)
@@ -25,6 +26,9 @@ class ReportResult:
     detailed_report: str
     prompt_path: str
     output_path: str
+    refined_report: str | None = None
+    llm2_prompt_path: str | None = None
+    llm2_output_path: str | None = None
 
 
 class EvidenceReporter:
@@ -32,11 +36,12 @@ class EvidenceReporter:
         self._service = get_aggregation_service()
         self._logs_dir = Path(logs_dir or os.environ.get("REPORTS_LOG_DIR", ".reports"))
         self._logs_dir.mkdir(parents=True, exist_ok=True)
-        # Build only the primary LLM
-        primary, _ = build_llm_stack()
+        # Build LLM-1 and LLM-2 (refiner)
+        primary, refiner = build_llm_stack()
         self._llm_primary = primary
+        self._llm_refiner: GeminiRefiner | None = refiner  # type: ignore[assignment]
 
-    async def generate(self, payload: AggregateRequest) -> ReportResult:
+    async def generate(self, payload: AggregateRequest, *, refine: bool = False) -> ReportResult:
         pack = await self._service.aggregate(payload)
         prompt = build_evidence_prompt(pack)
         run_dir = self._create_run_dir(pack)
@@ -47,7 +52,26 @@ class EvidenceReporter:
         # Run LLM-1 in a worker thread to avoid blocking the event loop
         detailed = await asyncio.to_thread(self._llm_primary.generate_report, prompt)
         output_path.write_text(detailed)
-        return ReportResult(issued_at=pack.issued_at, detailed_report=detailed, prompt_path=str(prompt_path), output_path=str(output_path))
+        result = ReportResult(
+            issued_at=pack.issued_at,
+            detailed_report=detailed,
+            prompt_path=str(prompt_path),
+            output_path=str(output_path),
+        )
+
+        if refine and self._llm_refiner is not None:
+            # Log LLM-2 prompt and output
+            llm2_prompt = self._llm_refiner.build_prompt(detailed)
+            llm2_prompt_path = run_dir / "llm2_prompt.txt"
+            llm2_output_path = run_dir / "llm2_output.txt"
+            llm2_prompt_path.write_text(llm2_prompt)
+            refined = await asyncio.to_thread(self._llm_refiner.refine, detailed)
+            llm2_output_path.write_text(refined)
+            result.refined_report = refined
+            result.llm2_prompt_path = str(llm2_prompt_path)
+            result.llm2_output_path = str(llm2_output_path)
+
+        return result
 
     def _create_run_dir(self, pack: AggregateEvidencePack) -> Path:
         ts = datetime.now().strftime("%Y%m%dT%H%M%S")
@@ -60,4 +84,3 @@ class EvidenceReporter:
 
 
 __all__ = ["EvidenceReporter", "ReportResult"]
-

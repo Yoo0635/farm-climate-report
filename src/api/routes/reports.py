@@ -22,13 +22,13 @@ _reporter = EvidenceReporter()
 
 
 @router.post("/api/report", status_code=status.HTTP_200_OK)
-async def generate_report(payload: AggregateRequest, demo: bool | None = Query(None)) -> dict:
+async def generate_report(payload: AggregateRequest, demo: bool | None = Query(None), refine: bool = Query(False)) -> dict:
     effective_payload = payload if demo is None else payload.model_copy(update={"demo": demo})
 
     req_id = str(uuid4())
     started = time.perf_counter()
     try:
-        result = await _reporter.generate(effective_payload)
+        result = await _reporter.generate(effective_payload, refine=refine)
     except ValueError as exc:
         _log_failure(effective_payload, req_id, started, demo, "bad_request", str(exc))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -43,17 +43,25 @@ async def generate_report(payload: AggregateRequest, demo: bool | None = Query(N
         "crop": payload.crop,
         "demo": demo if demo is not None else payload.demo,
         "duration_ms": duration_ms,
+        "refine": refine,
         "prompt_path": result.prompt_path,
         "output_path": result.output_path,
     }
     logger.info("report.completed %s", json.dumps(log_payload, ensure_ascii=False))
 
-    return {
+    response = {
         "issued_at": result.issued_at,
         "detailed_report": result.detailed_report,
         "prompt_path": result.prompt_path,
         "output_path": result.output_path,
     }
+    if refine:
+        response.update({
+            "refined_report": result.refined_report,
+            "llm2_prompt_path": result.llm2_prompt_path,
+            "llm2_output_path": result.llm2_output_path,
+        })
+    return response
 
 
 def _log_failure(payload: AggregateRequest, req_id: str, started: float, demo: bool | None, reason: str, message: str) -> None:
@@ -68,4 +76,3 @@ def _log_failure(payload: AggregateRequest, req_id: str, started: float, demo: b
         "duration_ms": duration_ms,
     }
     logger.warning("report.failed %s", json.dumps(log_payload, ensure_ascii=False))
-
