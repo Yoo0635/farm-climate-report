@@ -28,3 +28,8 @@ Thumbs.db
 # Node/Frontend
 frontend/node_modules/
 frontend/dist/
+parut-backend/.env
+data/*.jsonl
+out/
+parut-backend/uvicorn.log
+parut-backend/.uvicorn.pid

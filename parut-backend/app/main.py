@@ -74,6 +74,7 @@ async def inbound(req: Request, x_verify_token: str | None = Header(default=None
     code = val[:1] if val else ""
     wf = run_numeric_workflow(sender, code, free_text=(text if code not in ("1","2","3") else None))
     reply_text = wf["body"]
+    print('REPLY>>', reply_text[:200].replace('\n',' / '))
     try:
         # RCS 가능시 버튼 붙여 재발송(불가하면 자동 SMS 폴백)
         send_rcs_or_sms(sender, reply_text, [("완료","1"),("도움요청","2"),("보류","3")])
