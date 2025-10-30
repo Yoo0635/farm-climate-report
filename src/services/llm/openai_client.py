@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from openai import OpenAI
 
 
-DEFAULT_MODEL = "gpt-4.1-mini"
+DEFAULT_MODEL = "gpt-5"
 
 
 class OpenAILLM:
@@ -57,7 +57,28 @@ class OpenAILLM:
             ]
 
         completion = self._client.responses.create(**create_kwargs)
-        # The new Responses API returns a list of output choices; we grab the first message text.
-        return completion.output[0].content[0].text.strip()
+        # Robust extraction across SDK variants
+        text: str | None = None
+        # Preferred helper when available
+        try:  # pragma: no cover - SDK dependent
+            text = getattr(completion, "output_text", None)
+        except Exception:  # noqa: BLE001
+            text = None
+        # Fallback to walking the content blocks
+        if not text:
+            output = getattr(completion, "output", None)
+            if output and len(output) > 0:
+                content = getattr(output[0], "content", None)
+                if content:
+                    parts: list[str] = []
+                    for block in content:
+                        val = getattr(block, "text", None) or getattr(block, "value", None)
+                        if isinstance(val, str) and val.strip():
+                            parts.append(val)
+                    if parts:
+                        text = "\n".join(parts)
+        if not text:
+            text = str(completion)
+        return text.strip()
 
 __all__ = ["OpenAILLM"]
