@@ -1,7 +1,7 @@
-# API Aggregation Spec — **Raw + Soft Hints** (KMA · NPMS · Open-Meteo)
+# API Aggregation Spec — Andong Apple (KMA · NPMS · Open‑Meteo)
 
 > Purpose: Backend fetches three sources, does **minimal normalization**, computes **non-binding soft hints**, and hands a single **evidence pack** to the LLM.
-> Scope: **D0–D10** horizon; crops: **rice, lettuce, tomato**; monolithic FastAPI service.
+> Scope (MVP narrowed): **Andong‑si apple orchards only**; horizon **D0–D10**; monolithic FastAPI service.
 > **IMPORTANT: This specification is a draft and is subject to change at any time. If there is a reasonable justification, you should plan outside the specification and then modify this document.**
 ---
 
@@ -13,41 +13,42 @@
 
 ---
 
-## 1) Inputs & Identity
+## 1) Inputs & Identity (Andong Apple Only)
 
 **Request (Profile)**
 
 ```json
-{"region":"Gimcheon-si","crop":"tomato","stage":"flowering"}
+{"region":"Andong-si","crop":"apple","stage":"flowering"}
 ```
 
-**Resolver (derived once)**
+**Resolver (derived once, Andong defaults)**
 
-* `lat, lon` (Open-Meteo)
-* `kma_grid` (e.g., `{nx, ny}` or area code for short/mid-term)
-* `npms_region_code` (region for bulletins)
+- `lat, lon`: 36.568, 128.729 (Andong‑si center; used by Open‑Meteo)
+- `kma_area_code`: `11H10501` (KMA 중기예보 지역코드 — 안동)
+- `kma_grid`: optional for short‑range; not required for this MVP
+- `npms_crop_code`: `FT010601` (사과)
 
-*(For the hackathon, preload demo profiles with all three IDs.)*
+For MVP, preload a single resolver record for `("andong-si", "apple")`.
 
 ---
 
 ## 2) External Fetchers & Fields to Keep
 
-### A) **KMA** (primary for D0–D3 + all warnings)
+### A) **KMA** (mid‑term summaries + future warnings)
 
 Keep:
 
 ```json
 {
   "issued_at": "ISO8601+09:00",
-  "daily": [ {"date":"YYYY-MM-DD","tmax_c":33.1,"tmin_c":24.3,"precip_mm":12.0,"wind_ms":7.2} ],
-  "hourly": [ {"ts":"ISO8601+09:00","t_c":31.5,"rh_pct":64,"wind_ms":5.1,"gust_ms":8.3,"precip_mm":0.2} ],
-  "warnings": [ {"type":"HEAT|RAIN|WIND|COLD|TYPHOON","level":"WATCH|WARNING","from":"ISO","to":"ISO","area":"text"} ],
+  "daily": [ {"date":"YYYY-MM-DD","summary":"맑음 / 구름많음","precip_probability_pct":10.0} ],
+  "hourly": [],
+  "warnings": [ ... ]  // optional; may be unavailable initially
   "provenance": "KMA(YYYY-MM-DD)"
 }
 ```
 
-### B) **Open-Meteo** (primary D4–D10; hourly detail; fallback)
+### B) **Open‑Meteo** (primary numeric daily + hourly; fallback)
 
 Keep (same keys/units as KMA):
 
@@ -60,14 +61,14 @@ Keep (same keys/units as KMA):
 }
 ```
 
-### C) **NPMS** (crop/region pest bulletins)
+### C) **NPMS** (apple pest bulletins)
 
 Keep (decision-driving only):
 
 ```json
 {
   "issued_at":"ISO8601+09:00",
-  "crop":"rice|lettuce|tomato",
+  "crop":"apple",
   "bulletins":[ {"pest":"name-ko","risk":"LOW|MODERATE|HIGH|ALERT","since":"YYYY-MM-DD","summary":"1–2 lines ko"} ],
   "provenance":"NPMS(YYYY-MM-DD)"
 }
@@ -86,16 +87,16 @@ Keep (decision-driving only):
 
 ---
 
-## 4) Merge Policy (no hard rules)
+## 4) Merge Policy (Andong Apple)
 
-* **D0–D3**: prefer **KMA** daily/hourly; fill gaps from Open-Meteo.
-* **D4–D10**: prefer **Open-Meteo** daily; (optional) overlay KMA mid-term if already integrated.
-* **Warnings**: always from **KMA** (carry verbatim).
-* Keep arrays **as provided** (no averaging); mark which source supplied each day if needed (`daily[i].src` optional).
+* **Numeric daily + hourly**: use **Open‑Meteo** as primary across D0–D10; use `src="open-meteo"`.
+* **KMA mid‑term summaries**: surface as `daily[].summary` and `daily[].precip_probability_pct` when available; do not overwrite numeric fields.
+* **Warnings**: from **KMA** when accessible; otherwise omit (empty array).
+* Keep arrays **as provided** (no averaging); annotate each element with `src` where applicable.
 
 ---
 
-## 5) Soft Hints (optional, deterministic, non-binding)
+## 5) Soft Hints (optional, deterministic, non‑binding)
 
 Compute once to help the model, but **never force decisions**:
 
@@ -120,18 +121,18 @@ Compute once to help the model, but **never force decisions**:
 
 ```json
 {
-  "profile": {"region":"Gimcheon-si","crop":"tomato","stage":"flowering"},
+  "profile": {"region":"Andong-si","crop":"apple","stage":"flowering"},
   "issued_at":"2025-10-29T09:00:00+09:00",
   "climate":{
     "horizon_days":10,
     "daily":[ ... D0–D10 merged ... ],
     "hourly":[ ... next ≤72h ... ],
     "warnings":[ ... KMA ... ],
-    "provenance":[ "KMA(2025-10-29)","Open-Meteo(2025-10-29)" ]
+    "provenance":[ "KMA(2025-10-29)", "Open-Meteo(2025-10-29)" ]
   },
   "pest":{
-    "crop":"tomato",
-    "bulletins":[ {"pest":"잿빛곰팡이병","risk":"MODERATE","since":"2025-10-27","summary":"고온·고습 시 주의"} ],
+    "crop":"apple",
+    "bulletins":[ {"pest":"갈색무늬병","risk":"MODERATE","since":"2025-10-27","summary":"강수 후 전엽기 환기·위생관리 강화"} ],
     "provenance":[ "NPMS(2025-10-27)" ]
   },
   "soft_hints":{
@@ -147,7 +148,7 @@ Compute once to help the model, but **never force decisions**:
 **POST `/api/aggregate`**
 
 * **Input**: `Profile`
-* **Process**: resolve IDs → parallel fetch (**KMA, Open-Meteo, NPMS**) → minimal normalize → optional soft hints → **return evidence pack**
+* **Process**: resolve IDs → parallel fetch (**KMA mid‑term summaries, Open‑Meteo numeric, NPMS apple bulletins**) → minimal normalize → optional soft hints → **return evidence pack**
 * **Output**: `EvidencePack` (above)
 
 **Caching/TTL (suggested)**
@@ -158,8 +159,8 @@ Compute once to help the model, but **never force decisions**:
 
 **Fallbacks**
 
-* KMA unavailable → use Open-Meteo only; keep provenance.
-* NPMS empty → `bulletins: []` (the model should default to observation/hygiene guidance).
+* KMA unavailable → proceed with Open‑Meteo numeric only; keep provenance.
+* NPMS empty → `bulletins: []` (default to observation/hygiene guidance for apple).
 
 **Demo Switch**
 
@@ -173,13 +174,13 @@ Compute once to help the model, but **never force decisions**:
 
 ## 8) LLM Prompt Contract (for reference)
 
-* “Use **raw forecast** (KMA/Open-Meteo) and **NPMS bulletins** as primary evidence.
+* “Use **raw forecast** (Open‑Meteo numeric + KMA summaries) and **NPMS (apple) bulletins** as primary evidence.
   Soft hints are advisory; if hints conflict with raw data or warnings, **ignore hints**.
-  Generate **Top-3 actions with timing/trigger** for {region,crop,stage} in plain Korean.
+  Generate **Top‑3 actions with timing/trigger** for Andong‑si apple {stage} in plain Korean.
   **Cite one source+year per action**; **no pesticide/medical directives**.”
 
 ---
 
 ## 9) Non-Goals (MVP)
 
-* No ET₀/soil models/price feeds; no MCP/tools; no microservices; no analytics stack.
+* No ET₀/soil models/price feeds; no MCP/tools; no microservices; no analytics stack. No multi‑region/crop handling.
