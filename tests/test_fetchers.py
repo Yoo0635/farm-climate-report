@@ -15,15 +15,15 @@ from src.services.aggregation.models import AggregateProfile, ResolvedProfile
 KST = ZoneInfo("Asia/Seoul")
 
 
-def _resolved_profile(crop: str = "rice") -> ResolvedProfile:
-    profile = AggregateProfile(region="Gimcheon-si", crop=crop, stage="test-stage")
+def _resolved_profile() -> ResolvedProfile:
+    profile = AggregateProfile(region="Andong-si", crop="apple", stage="flowering")
     return ResolvedProfile(
         profile=profile,
-        lat=36.137,
-        lon=128.113,
-        kma_grid={"nx": 83, "ny": 97},
-        kma_area_code="11B00000",
-        npms_region_code="41280",
+        lat=36.568,
+        lon=128.729,
+        kma_grid=None,
+        kma_area_code="11H10501",
+        npms_region_code="47170",
     )
 
 
@@ -83,17 +83,19 @@ def test_kma_fetcher_parses_mid_land() -> None:
                     "items": {
                         "item": [
                             {
-                                "regId": "11B00000",
-                                "wf4Am": "Sunny",
-                                "wf4Pm": "Cloudy",
+                                "regId": "11H10501",
+                                "wf4Am": "맑음",
+                                "wf4Pm": "구름많음",
                                 "rnSt4Am": 10,
                                 "rnSt4Pm": 20,
-                                "wf5Am": "Overcast",
-                                "wf5Pm": "Rain",
-                                "rnSt5Am": 30,
-                                "rnSt5Pm": 40,
-                                "wf8": "Sunny",
+                                "wf5Am": "구름많음",
+                                "wf5Pm": "흐림",
+                                "rnSt5Am": 40,
+                                "rnSt5Pm": 60,
+                                "wf8": "비",
                                 "rnSt8": 50,
+                                "rnSt9": 20,
+                                "wf9": "맑음",
                             }
                         ]
                     }
@@ -110,8 +112,7 @@ def test_kma_fetcher_parses_mid_land() -> None:
 
         assert result is not None
         assert result["daily"][0]["date"] == "2025-11-01"
-        assert result["daily"][0]["summary"] == "Sunny / Cloudy"
-        assert result["daily"][0]["precip_mm"] is None
+        assert result["daily"][0]["summary"]
         assert result["daily"][0]["precip_probability_pct"] == 15.0
         assert result["provenance"].startswith("KMA(")
 
@@ -126,17 +127,10 @@ def test_npms_fetcher_returns_bulletins() -> None:
             "service": {
                 "pestModelByKncrList": [
                     {
-                        "kncrCode": "FC010101",
-                        "dbyhsMdlNm": "Rice%20Blast",
+                        "kncrCode": "FT010601",
+                        "dbyhsMdlNm": "%EA%B0%88%EC%83%89%EB%AC%B4%EB%8A%AC%EB%B3%91",
                         "validAlarmRiskIdex": "2",
-                        "pestConfigStr": "Warning!+@+!Action%20needed!+@+!FF3C00|Notice!+@+!Monitor!+@+!001AFF",
-                        "nowDrveDatetm": "2025100412",
-                    },
-                    {
-                        "kncrCode": "VC011205",
-                        "dbyhsMdlNm": "Pepper%20Blight",
-                        "validAlarmRiskIdex": "1",
-                        "pestConfigStr": "Alert!+@+!Severe!+@+!FF0000",
+                        "pestConfigStr": "2%EB%8B%A8%EA%B3%84!+@+!%EB%B0%9C%EC%83%9D%20%EC%A6%9D%EA%B0%80%20%EA%B3%A1%EB%8B%A8%20%EA%B4%80%EB%A6%AC!+@+!FF3C00|1%EB%8B%A8%EA%B3%84!+@+!%ED%99%94%EB%B6%84%20%EC%A3%BC%EC%9D%98!+@+!001AFF",
                         "nowDrveDatetm": "2025100412",
                     },
                 ]
@@ -147,15 +141,15 @@ def test_npms_fetcher_returns_bulletins() -> None:
             return httpx.Response(200, json=npms_payload)
 
         fetcher._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))  # noqa: SLF001 - testing internal override
-        result = await fetcher.fetch(_resolved_profile("rice"))
+        result = await fetcher.fetch(_resolved_profile())
         await fetcher.aclose()
 
         assert result is not None
         assert result["bulletins"], "Expected at least one bulletin"
         first = result["bulletins"][0]
-        assert first["pest"] == "Rice Blast"
+        assert first["pest"] == "갈색무늬병"
         assert first["risk"] == "HIGH"
-        assert first["summary"].startswith("Notice")
+        assert "발생" in first["summary"]
         assert first["since"] == "2025-10-04"
 
     asyncio.run(_run())

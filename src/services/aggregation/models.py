@@ -8,14 +8,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-SUPPORTED_CROPS = ("rice", "lettuce", "tomato")
+SUPPORTED_CROPS = ("apple",)
 
 
 class AggregateProfile(BaseModel):
     """Minimal profile required to drive aggregation."""
 
     region: str = Field(..., min_length=1)
-    crop: Literal["rice", "lettuce", "tomato"]
+    crop: Literal["apple"]
     stage: str = Field(..., min_length=1)
 
 
@@ -44,6 +44,8 @@ class ClimateDaily(BaseModel):
     tmin_c: float | None = None
     precip_mm: float | None = None
     wind_ms: float | None = None
+    summary: str | None = None
+    precip_probability_pct: float | None = None
     src: Literal["kma", "open-meteo"] | None = None
 
 
@@ -87,7 +89,7 @@ class PestBulletin(BaseModel):
 
 
 class PestSection(BaseModel):
-    crop: Literal["rice", "lettuce", "tomato"]
+    crop: Literal["apple"]
     bulletins: list[PestBulletin]
     provenance: list[str]
 

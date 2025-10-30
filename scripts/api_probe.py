@@ -111,7 +111,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--kma-key", help="KMA API Hub key (MidFcstInfoService). Defaults to KMA_API_KEY env.")
     parser.add_argument("--kma-region", default="11B00000", help="KMA mid-term region code (default: 11B00000)")
     parser.add_argument("--npms-key", help="NPMS API key (SVC31). Defaults to NPMS_API_KEY env.")
-    parser.add_argument("--npms-crop", default="FC010101", help="NPMS crop code (default: FC010101 — 논벼)")
+    parser.add_argument("--npms-crop", default="FT010601", help="NPMS crop code (default: FT010601 — 사과)")
     parser.add_argument("--tmfc", help="Optional tmFc (YYYYMMDDHHMM). Defaults to latest available publication.")
     args = parser.parse_args(argv)
 

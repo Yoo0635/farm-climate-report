@@ -314,10 +314,7 @@ class NpmsFetcher(BaseFetcher):
     """NPMS crop/region pest warnings."""
 
     _CROP_CODE_MAP = {
-        "rice": "FC010101",  # 논벼
-        # NPMS SVC31 does not expose dedicated lettuce/tomato entries; fall back to empty payload.
-        "lettuce": None,
-        "tomato": None,
+        "apple": "FT010601",  # 사과
     }
 
     _RISK_ORDER = {"ALERT": 0, "HIGH": 1, "MODERATE": 2, "LOW": 3}

@@ -21,26 +21,12 @@ class ProfileResolver:
 
     def __init__(self) -> None:
         self._records: dict[tuple[str, str], ResolverRecord] = {
-            ("gimcheon-si", "tomato"): ResolverRecord(
-                lat=36.137,
-                lon=128.113,
-                kma_grid={"nx": 83, "ny": 97},
-                kma_area_code="11G00701",
-                npms_region_code="47280",
-            ),
-            ("hwaseong-si", "rice"): ResolverRecord(
-                lat=37.199,
-                lon=126.832,
-                kma_grid={"nx": 55, "ny": 123},
-                kma_area_code="11B20601",
-                npms_region_code="41280",
-            ),
-            ("jeju-si", "lettuce"): ResolverRecord(
-                lat=33.499,
-                lon=126.531,
-                kma_grid={"nx": 52, "ny": 38},
-                kma_area_code="11G00201",
-                npms_region_code="50110",
+            ("andong-si", "apple"): ResolverRecord(
+                lat=36.568,
+                lon=128.729,
+                kma_grid=None,
+                kma_area_code="11H10501",
+                npms_region_code="47170",
             ),
         }
 

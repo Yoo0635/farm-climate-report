@@ -136,6 +136,8 @@ class AggregationService:
                     tmin_c=_coerce_float(entry.get("tmin_c")),
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
+                    summary=entry.get("summary"),
+                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
                     src="kma",
                 )
             )
@@ -187,6 +189,8 @@ class AggregationService:
                     tmin_c=_coerce_float(entry.get("tmin_c")),
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
+                    summary=entry.get("summary"),
+                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
                     src="open-meteo",
                 )
             )
@@ -239,20 +243,22 @@ class AggregationService:
         kma_map = {entry.date: entry for entry in kma_daily}
         om_map = {entry.date: entry for entry in open_meteo_daily}
 
-        all_dates = sorted(set(kma_map) | set(om_map))
-        if not all_dates:
-            all_dates = [base_date + timedelta(days=i) for i in range(11)]
-
         horizon: list[ClimateDaily] = []
         for offset in range(0, 11):
             day = base_date + timedelta(days=offset)
-            entry: ClimateDaily | None = None
-            if offset <= 3:
-                entry = kma_map.get(day) or om_map.get(day)
-            else:
-                entry = om_map.get(day) or kma_map.get(day)
-            if entry:
-                horizon.append(entry)
+            om_entry = om_map.get(day)
+            kma_entry = kma_map.get(day)
+            if om_entry:
+                if kma_entry:
+                    if kma_entry.summary and not om_entry.summary:
+                        om_entry.summary = kma_entry.summary
+                    if kma_entry.precip_probability_pct is not None and om_entry.precip_probability_pct is None:
+                        om_entry.precip_probability_pct = kma_entry.precip_probability_pct
+                horizon.append(om_entry)
+            elif kma_entry:
+                horizon.append(kma_entry)
+        if not horizon:
+            return []
         return horizon
 
     def _merge_hourly(
