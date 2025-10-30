@@ -26,5 +26,6 @@ def get_engine():
 
 
 def get_session_maker() -> Callable[[], "Session"]:
-    return sessionmaker(bind=get_engine(), autoflush=False, autocommit=False, future=True)
-
+    return sessionmaker(
+        bind=get_engine(), autoflush=False, autocommit=False, future=True
+    )

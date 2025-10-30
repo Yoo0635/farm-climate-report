@@ -5,7 +5,12 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import timedelta
 
-from src.services.aggregation.models import ClimateDaily, ClimateHourly, SoftHints, WeatherWarning
+from src.services.aggregation.models import (
+    ClimateDaily,
+    ClimateHourly,
+    SoftHints,
+    WeatherWarning,
+)
 
 
 def compute_soft_hints(
@@ -35,7 +40,9 @@ def _rain_run_max_days(daily: list[ClimateDaily]) -> int | None:
     return best or None
 
 
-def _count_hours(hourly: list[ClimateHourly], field: str, threshold: float) -> int | None:
+def _count_hours(
+    hourly: list[ClimateHourly], field: str, threshold: float
+) -> int | None:
     total = 0
     for entry in hourly:
         value = getattr(entry, field, None)

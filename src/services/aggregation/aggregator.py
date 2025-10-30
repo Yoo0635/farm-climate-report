@@ -45,12 +45,16 @@ class AggregationService:
         self._npms = npms_fetcher or NpmsFetcher()
 
     async def aggregate(self, payload: AggregateRequest) -> AggregateEvidencePack:
-        profile = AggregateProfile(region=payload.region, crop=payload.crop, stage=payload.stage)
+        profile = AggregateProfile(
+            region=payload.region, crop=payload.crop, stage=payload.stage
+        )
 
         if payload.demo:
             bundle = get_demo_bundle(profile.region, profile.crop)
             if not bundle:
-                raise ValueError(f"No demo data for profile {profile.region}/{profile.crop}")
+                raise ValueError(
+                    f"No demo data for profile {profile.region}/{profile.crop}"
+                )
             return self._assemble(profile, bundle.kma, bundle.open_meteo, bundle.npms)
 
         resolved = self._resolver.resolve(profile)
@@ -58,7 +62,9 @@ class AggregationService:
         om_task = asyncio.create_task(self._open_meteo.fetch(resolved))
         npms_task = asyncio.create_task(self._npms.fetch(resolved))
 
-        kma_data, om_data, npms_data = await asyncio.gather(kma_task, om_task, npms_task, return_exceptions=True)
+        kma_data, om_data, npms_data = await asyncio.gather(
+            kma_task, om_task, npms_task, return_exceptions=True
+        )
 
         errors: list[str] = []
         if isinstance(kma_data, Exception):
@@ -72,10 +78,14 @@ class AggregationService:
             npms_data = None
 
         if errors:
-            logger.warning("Aggregation fetch errors detected", extra={"errors": errors})
+            logger.warning(
+                "Aggregation fetch errors detected", extra={"errors": errors}
+            )
 
         if not kma_data and not om_data:
-            raise RuntimeError("Failed to fetch climate data from both KMA and Open-Meteo.")
+            raise RuntimeError(
+                "Failed to fetch climate data from both KMA and Open-Meteo."
+            )
 
         return self._assemble(profile, kma_data, om_data, npms_data)
 
@@ -90,8 +100,12 @@ class AggregationService:
         om_norm = self._normalize_open_meteo(open_meteo_raw)
         npms_norm = self._normalize_npms(npms_raw, profile)
 
-        issued_candidates = [dt for dt in (kma_norm.issued_at, om_norm.issued_at) if dt is not None]
-        issued_at = max(issued_candidates) if issued_candidates else datetime.now(tz=KST)
+        issued_candidates = [
+            dt for dt in (kma_norm.issued_at, om_norm.issued_at) if dt is not None
+        ]
+        issued_at = (
+            max(issued_candidates) if issued_candidates else datetime.now(tz=KST)
+        )
 
         daily = self._merge_daily(issued_at.date(), kma_norm.daily, om_norm.daily)
         hourly = self._merge_hourly(kma_norm.hourly, om_norm.hourly)
@@ -138,7 +152,9 @@ class AggregationService:
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
                     summary=entry.get("summary"),
-                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
+                    precip_probability_pct=_coerce_float(
+                        entry.get("precip_probability_pct")
+                    ),
                     src="kma",
                 )
             )
@@ -191,7 +207,9 @@ class AggregationService:
                     precip_mm=_coerce_float(entry.get("precip_mm")),
                     wind_ms=_coerce_float(entry.get("wind_ms")),
                     summary=entry.get("summary"),
-                    precip_probability_pct=_coerce_float(entry.get("precip_probability_pct")),
+                    precip_probability_pct=_coerce_float(
+                        entry.get("precip_probability_pct")
+                    ),
                     src="open-meteo",
                 )
             )
@@ -214,7 +232,9 @@ class AggregationService:
 
         return _NormalizedSource(issued_at, daily, hourly, [], provenance)
 
-    def _normalize_npms(self, data: dict | None, profile: AggregateProfile) -> PestSection:
+    def _normalize_npms(
+        self, data: dict | None, profile: AggregateProfile
+    ) -> PestSection:
         bulletins: list[PestBulletin] = []
         observations: list[PestObservation] = []
         provenance = []
@@ -248,7 +268,12 @@ class AggregationService:
                     )
                 )
 
-        return PestSection(crop=profile.crop, bulletins=bulletins, observations=observations, provenance=provenance)
+        return PestSection(
+            crop=profile.crop,
+            bulletins=bulletins,
+            observations=observations,
+            provenance=provenance,
+        )
 
     def _merge_daily(
         self,
@@ -268,8 +293,13 @@ class AggregationService:
                 if kma_entry:
                     if kma_entry.summary and not om_entry.summary:
                         om_entry.summary = kma_entry.summary
-                    if kma_entry.precip_probability_pct is not None and om_entry.precip_probability_pct is None:
-                        om_entry.precip_probability_pct = kma_entry.precip_probability_pct
+                    if (
+                        kma_entry.precip_probability_pct is not None
+                        and om_entry.precip_probability_pct is None
+                    ):
+                        om_entry.precip_probability_pct = (
+                            kma_entry.precip_probability_pct
+                        )
                 horizon.append(om_entry)
             elif kma_entry:
                 horizon.append(kma_entry)
@@ -313,7 +343,9 @@ def _coerce_float(value) -> float | None:  # noqa: ANN001 - dynamic typing for c
         return None
 
 
-def _coerce_datetime(value) -> datetime | None:  # noqa: ANN001 - dynamic typing for coercion
+def _coerce_datetime(
+    value,
+) -> datetime | None:  # noqa: ANN001 - dynamic typing for coercion
     if value is None:
         return None
     if isinstance(value, datetime):

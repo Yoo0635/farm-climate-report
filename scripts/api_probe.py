@@ -69,7 +69,9 @@ def fetch_kma(config: ProbeConfig) -> dict[str, Any]:
 
 def fetch_npms(config: ProbeConfig) -> dict[str, Any]:
     if not config.npms_key:
-        raise RuntimeError("NPMS key is missing. Set NPMS_API_KEY (or pass --npms-key).")
+        raise RuntimeError(
+            "NPMS key is missing. Set NPMS_API_KEY (or pass --npms-key)."
+        )
     url, params = build_npms_request(config)
     request_url = f"{url}?{urlencode(params)}"
     with urlopen(request_url, timeout=20) as response:  # noqa: S310 - trusted hostname
@@ -80,6 +82,7 @@ def fetch_npms(config: ProbeConfig) -> dict[str, Any]:
 
 def decode_npms_text(payload: dict[str, Any]) -> dict[str, Any]:
     """Return a deep-ish copy with percent-encoding & HTML entities decoded."""
+
     def _decode(value: Any) -> Any:
         if isinstance(value, str):
             return unescape(unquote(value))
@@ -117,7 +120,9 @@ def build_npms_request(config: ProbeConfig) -> tuple[str, dict[str, str]]:
     return url, params
 
 
-def _format_curl_command(base_url: str, params: dict[str, str], secret_fields: dict[str, str]) -> str:
+def _format_curl_command(
+    base_url: str, params: dict[str, str], secret_fields: dict[str, str]
+) -> str:
     """Return a multi-line curl command with sensitive values replaced by env vars."""
     if not params:
         return f"curl -G --compressed {shlex.quote(base_url)}"
@@ -135,20 +140,30 @@ def _format_curl_command(base_url: str, params: dict[str, str], secret_fields: d
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="Fetch sample responses from KMA and NPMS APIs.")
-    parser.add_argument("--kma-key", help="KMA API Hub key (MidFcstInfoService). Defaults to KMA_API_KEY env.")
+    parser = argparse.ArgumentParser(
+        description="Fetch sample responses from KMA and NPMS APIs."
+    )
+    parser.add_argument(
+        "--kma-key",
+        help="KMA API Hub key (MidFcstInfoService). Defaults to KMA_API_KEY env.",
+    )
     parser.add_argument(
         "--kma-region",
         default=os.environ.get("KMA_DEFAULT_REGION", "11H10501"),
         help="KMA mid-term region code (default: 11H10501 — 안동시; override via KMA_DEFAULT_REGION env).",
     )
-    parser.add_argument("--npms-key", help="NPMS API key (SVC31). Defaults to NPMS_API_KEY env.")
+    parser.add_argument(
+        "--npms-key", help="NPMS API key (SVC31). Defaults to NPMS_API_KEY env."
+    )
     parser.add_argument(
         "--npms-crop",
         default=os.environ.get("NPMS_DEFAULT_CROP", "FT010601"),
         help="NPMS crop code (default: FT010601 — 사과; override via NPMS_DEFAULT_CROP env).",
     )
-    parser.add_argument("--tmfc", help="Optional tmFc (YYYYMMDDHHMM). Defaults to latest available publication.")
+    parser.add_argument(
+        "--tmfc",
+        help="Optional tmFc (YYYYMMDDHHMM). Defaults to latest available publication.",
+    )
     parser.add_argument(
         "--show-curl",
         action="store_true",
@@ -160,7 +175,12 @@ def main(argv: list[str]) -> int:
     if load_dotenv is not None:
         load_dotenv()
 
-    kma_key = args.kma_key or os.environ.get("KMA_API_KEY") or os.environ.get("KMA_AUTH_KEY") or os.environ.get("KMA_SERVICE_KEY")
+    kma_key = (
+        args.kma_key
+        or os.environ.get("KMA_API_KEY")
+        or os.environ.get("KMA_AUTH_KEY")
+        or os.environ.get("KMA_SERVICE_KEY")
+    )
     npms_key = args.npms_key or os.environ.get("NPMS_API_KEY")
 
     config = ProbeConfig(

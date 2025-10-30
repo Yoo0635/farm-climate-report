@@ -75,7 +75,9 @@ def summarize_npms(payload: dict[str, Any], crop_code: str) -> list[dict[str, An
     seen_pests: set[str] = set()
 
     for raw in models:
-        entry = {_clean_text(str(k)): _clean_text(unquote(str(v))) for k, v in raw.items()}
+        entry = {
+            _clean_text(str(k)): _clean_text(unquote(str(v))) for k, v in raw.items()
+        }
         if entry.get("kncrCode") != crop_code:
             continue
 
@@ -133,7 +135,9 @@ def _parse_segments(raw: str) -> list[tuple[str, str, str]]:
     return segments
 
 
-def _select_segment(segments: list[tuple[str, str, str]], index: int) -> tuple[str | None, str | None]:
+def _select_segment(
+    segments: list[tuple[str, str, str]], index: int
+) -> tuple[str | None, str | None]:
     if not segments:
         return None, None
     clamped = max(1, min(index, len(segments)))
@@ -177,14 +181,22 @@ def _format_curl(url: str, params: dict[str, str]) -> str:
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Probe NPMS/NCPMS pest forecast API.")
-    parser.add_argument("--npms-key", help="NPMS API key (defaults to NPMS_API_KEY env).")
+    parser.add_argument(
+        "--npms-key", help="NPMS API key (defaults to NPMS_API_KEY env)."
+    )
     parser.add_argument(
         "--crop",
         default=os.environ.get("NPMS_DEFAULT_CROP", "FT010601"),
         help="Crop code (default: FT010601 — 안동 사과).",
     )
-    parser.add_argument("--raw", action="store_true", help="Print full decoded JSON (truncated to 5000 chars).")
-    parser.add_argument("--show-curl", action="store_true", help="Print curl command before fetching.")
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Print full decoded JSON (truncated to 5000 chars).",
+    )
+    parser.add_argument(
+        "--show-curl", action="store_true", help="Print curl command before fetching."
+    )
     args = parser.parse_args(argv)
 
     if load_dotenv is not None:
@@ -192,10 +204,18 @@ def main(argv: list[str]) -> int:
 
     api_key = args.npms_key or os.environ.get("NPMS_API_KEY")
     if not api_key:
-        print("NPMS key is missing. Set NPMS_API_KEY or pass --npms-key.", file=sys.stderr)
+        print(
+            "NPMS key is missing. Set NPMS_API_KEY or pass --npms-key.", file=sys.stderr
+        )
         return 1
 
-    config = ProbeConfig(api_key=api_key, crop_code=args.crop, base_url=os.environ.get("NPMS_API_BASE_URL", "http://ncpms.rda.go.kr/npmsAPI/service"))
+    config = ProbeConfig(
+        api_key=api_key,
+        crop_code=args.crop,
+        base_url=os.environ.get(
+            "NPMS_API_BASE_URL", "http://ncpms.rda.go.kr/npmsAPI/service"
+        ),
+    )
     url, params = build_npms_request(config)
 
     if args.show_curl:
@@ -230,4 +250,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - script entry point
     raise SystemExit(main(sys.argv[1:]))
-

@@ -21,11 +21,13 @@ class FakeOpenAILLM:
     model: str = "fake-openai"
 
     def build_prompt(self, prompt: str) -> str:
-        return "\n\n".join([
-            "[FAKE-LLM-1] Detailed Report Draft",
-            "-- Task --",
-            prompt,
-        ])
+        return "\n\n".join(
+            [
+                "[FAKE-LLM-1] Detailed Report Draft",
+                "-- Task --",
+                prompt,
+            ]
+        )
 
     def generate_report(self, task_prompt: str) -> str:
         # Produce a simple structured draft that looks LLM-like but is deterministic.
@@ -54,7 +56,9 @@ class FakeGeminiRefiner:
 
     def refine(self, detailed_report: str) -> str:
         # Take first N lines and compress into concise bullets.
-        lines: Sequence[str] = [l.strip() for l in detailed_report.splitlines() if l.strip()]
+        lines: Sequence[str] = [
+            l.strip() for l in detailed_report.splitlines() if l.strip()
+        ]
         bullets: list[str] = []
         for line in lines[: self.max_sentences]:
             if not line:

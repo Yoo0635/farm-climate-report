@@ -67,7 +67,7 @@ def print_curl(base_url: str, params: dict[str, str]) -> None:
     for idx, (key, value) in enumerate(items):
         rendered = "${NPMS_API_KEY}" if key == "apiKey" else value
         suffix = "" if idx == len(items) - 1 else " \\"
-        print(f"  --data-urlencode {shlex.quote(f'{key}={rendered}')}"+suffix)
+        print(f"  --data-urlencode {shlex.quote(f'{key}={rendered}')}" + suffix)
 
 
 def summarize(data: dict[str, Any], *, limit: int) -> None:
@@ -76,7 +76,9 @@ def summarize(data: dict[str, Any], *, limit: int) -> None:
     count = service.get("displayCount", 0)
     start = service.get("startPoint", 0)
     build_time = service.get("buildTime")
-    print(f"buildTime={build_time} totalCount={total} startPoint={start} displayCount={count}")
+    print(
+        f"buildTime={build_time} totalCount={total} startPoint={start} displayCount={count}"
+    )
 
     entries = service.get("list") or []
     if isinstance(entries, dict):
@@ -95,19 +97,44 @@ def summarize(data: dict[str, Any], *, limit: int) -> None:
         input_date = entry.get("inputStdrDatetm")
         print(f"{idx}. insectKey={insect_key}")
         print(f"   crop={crop}({crop_code}) predict={predict_name}({predict_code})")
-        print(f"   exam={exam_name}({exam_code}) year={year} tmrd={tmrd} input={input_date}")
+        print(
+            f"   exam={exam_name}({exam_code}) year={year} tmrd={tmrd} input={input_date}"
+        )
 
 
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Probe NPMS SVC51 (예찰 목록 조회)")
-    parser.add_argument("--npms-key", help="NPMS API key (defaults to NPMS_API_KEY env).")
-    parser.add_argument("--year", default=os.environ.get("NPMS_SVC51_YEAR"), help="조사년도 (기본: 현재년도).")
-    parser.add_argument("--predict-code", default=os.environ.get("NPMS_DEFAULT_PREDICT_CODE"), help="예찰구분코드 (searchPredictnSpchcknCode).")
-    parser.add_argument("--crop", default=os.environ.get("NPMS_DEFAULT_CROP"), help="작물코드 (kncrCode).")
-    parser.add_argument("--count", type=int, default=10, help="표시할 결과 개수 (1-50).")
+    parser.add_argument(
+        "--npms-key", help="NPMS API key (defaults to NPMS_API_KEY env)."
+    )
+    parser.add_argument(
+        "--year",
+        default=os.environ.get("NPMS_SVC51_YEAR"),
+        help="조사년도 (기본: 현재년도).",
+    )
+    parser.add_argument(
+        "--predict-code",
+        default=os.environ.get("NPMS_DEFAULT_PREDICT_CODE"),
+        help="예찰구분코드 (searchPredictnSpchcknCode).",
+    )
+    parser.add_argument(
+        "--crop",
+        default=os.environ.get("NPMS_DEFAULT_CROP"),
+        help="작물코드 (kncrCode).",
+    )
+    parser.add_argument(
+        "--count", type=int, default=10, help="표시할 결과 개수 (1-50)."
+    )
     parser.add_argument("--start", type=int, default=1, help="시작 위치 (1-500).")
-    parser.add_argument("--service-type", default=os.environ.get("NPMS_SVC51_TYPE", "AA003"), choices=["AA001", "AA003"], help="응답 형식: AA003(JSON) / AA001(XML).")
-    parser.add_argument("--show-curl", action="store_true", help="요청에 사용할 curl 명령을 출력합니다.")
+    parser.add_argument(
+        "--service-type",
+        default=os.environ.get("NPMS_SVC51_TYPE", "AA003"),
+        choices=["AA001", "AA003"],
+        help="응답 형식: AA003(JSON) / AA001(XML).",
+    )
+    parser.add_argument(
+        "--show-curl", action="store_true", help="요청에 사용할 curl 명령을 출력합니다."
+    )
     parser.add_argument("--raw", action="store_true", help="JSON 전문을 출력합니다.")
     args = parser.parse_args(argv)
 
@@ -116,7 +143,9 @@ def main(argv: list[str]) -> int:
 
     api_key = args.npms_key or os.environ.get("NPMS_API_KEY")
     if not api_key:
-        print("NPMS key missing. Export NPMS_API_KEY or pass --npms-key.", file=sys.stderr)
+        print(
+            "NPMS key missing. Export NPMS_API_KEY or pass --npms-key.", file=sys.stderr
+        )
         return 1
 
     display_count = max(1, min(args.count, 50))
@@ -150,4 +179,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry point
     raise SystemExit(main(sys.argv[1:]))
-

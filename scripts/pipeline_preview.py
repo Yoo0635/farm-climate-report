@@ -16,7 +16,7 @@ import argparse
 import logging
 import os
 import sys
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -42,7 +42,9 @@ def _build_logger(log_path: Path) -> logging.Logger:
     # Clear existing handlers if re-run in same process
     logger.handlers.clear()
 
-    fmt = logging.Formatter(fmt="%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+    fmt = logging.Formatter(
+        fmt="%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+    )
     fh = logging.FileHandler(log_path, encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
@@ -55,19 +57,29 @@ def _build_logger(log_path: Path) -> logging.Logger:
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the LLM pipeline without sending SMS.")
-    parser.add_argument("--region", required=True, help="Region identifier, e.g., KR/Seoul")
+    parser = argparse.ArgumentParser(
+        description="Run the LLM pipeline without sending SMS."
+    )
+    parser.add_argument(
+        "--region", required=True, help="Region identifier, e.g., KR/Seoul"
+    )
     parser.add_argument("--crop", required=True, help="Crop name, e.g., Strawberry")
     parser.add_argument("--stage", required=True, help="Growth stage, e.g., Flowering")
-    parser.add_argument("--scenario", default="", help="Optional demo scenario code, e.g., HEATWAVE")
-    parser.add_argument("--date-range", dest="date_range", default=None, help="Override date range text")
+    parser.add_argument(
+        "--scenario", default="", help="Optional demo scenario code, e.g., HEATWAVE"
+    )
+    parser.add_argument(
+        "--date-range", dest="date_range", default=None, help="Override date range text"
+    )
     parser.add_argument(
         "--offline",
         action="store_true",
         default=False,
         help="Force offline fake LLMs (equivalent to LLM_OFFLINE=1)",
     )
-    default_log = Path("logs") / f"pipeline-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.log"
+    default_log = (
+        Path("logs") / f"pipeline-{datetime.now(UTC).strftime('%Y%m%d-%H%M%S')}.log"
+    )
     parser.add_argument("--log", type=Path, default=default_log, help="Log file path")
     return parser.parse_args(argv)
 
@@ -95,16 +107,26 @@ def main(argv: list[str] | None = None) -> int:
     signals, actions = map_scenario_to_actions(args.scenario or "")
     validate_actions(actions)
     now = datetime.now(UTC)
-    date_range = args.date_range or f"{now:%Y-%m-%d} ~ {(now + timedelta(days=14)):%Y-%m-%d}"
+    date_range = (
+        args.date_range or f"{now:%Y-%m-%d} ~ {(now + timedelta(days=14)):%Y-%m-%d}"
+    )
 
     logger.info("Starting pipeline preview")
-    logger.info("Inputs: region=%s crop=%s stage=%s scenario=%s", args.region, args.crop, args.stage, args.scenario)
+    logger.info(
+        "Inputs: region=%s crop=%s stage=%s scenario=%s",
+        args.region,
+        args.crop,
+        args.stage,
+        args.scenario,
+    )
     logger.info("Date range: %s", date_range)
 
     try:
         generator = BriefGenerator()
         gen = generator.generate(
-            BriefGenerationContext(profile=profile, signals=signals, actions=actions, date_range=date_range)
+            BriefGenerationContext(
+                profile=profile, signals=signals, actions=actions, date_range=date_range
+            )
         )
     except Exception as exc:  # noqa: BLE001 - surface for CLI
         logger.error("Pipeline failed: %s", exc)
@@ -112,7 +134,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # Post-processing
     refined_text = append_citations(gen.refined_report, actions)
-    base_url = os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs").rstrip("/")
+    base_url = os.environ.get(
+        "DETAIL_BASE_URL", "https://example.com/public/briefs"
+    ).rstrip("/")
     sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
     # Console-friendly output

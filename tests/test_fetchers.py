@@ -32,7 +32,10 @@ def test_open_meteo_fetcher_parses_payload() -> None:
         fetcher = OpenMeteoFetcher()
 
         start = datetime(2025, 10, 30, 0, 0)
-        hours = [(start + timedelta(hours=hour)).strftime("%Y-%m-%dT%H:%M") for hour in range(75)]
+        hours = [
+            (start + timedelta(hours=hour)).strftime("%Y-%m-%dT%H:%M")
+            for hour in range(75)
+        ]
         hourly_payload = {
             "time": hours,
             "temperature_2m": [20.0 + (hour * 0.1) for hour in range(75)],
@@ -52,9 +55,13 @@ def test_open_meteo_fetcher_parses_payload() -> None:
 
         def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.path.endswith("/v1/forecast")
-            return httpx.Response(200, json={"daily": daily_payload, "hourly": hourly_payload})
+            return httpx.Response(
+                200, json={"daily": daily_payload, "hourly": hourly_payload}
+            )
 
-        fetcher._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))  # noqa: SLF001 - testing internal override
+        fetcher._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler)
+        )  # noqa: SLF001 - testing internal override
         result = await fetcher.fetch(_resolved_profile())
         await fetcher.aclose()
 
@@ -106,7 +113,9 @@ def test_kma_fetcher_parses_mid_land() -> None:
         def handler(_: httpx.Request) -> httpx.Response:
             return httpx.Response(200, json=mid_payload)
 
-        fetcher._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))  # noqa: SLF001 - testing internal override
+        fetcher._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler)
+        )  # noqa: SLF001 - testing internal override
         result = await fetcher.fetch(_resolved_profile())
         await fetcher.aclose()
 
@@ -181,7 +190,9 @@ def test_npms_fetcher_returns_bulletins() -> None:
                 return httpx.Response(200, json=svc53_payload)
             return httpx.Response(404, json={"error": "unexpected serviceCode"})
 
-        fetcher._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))  # noqa: SLF001 - testing internal override
+        fetcher._client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler)
+        )  # noqa: SLF001 - testing internal override
         result = await fetcher.fetch(_resolved_profile())
         await fetcher.aclose()
 

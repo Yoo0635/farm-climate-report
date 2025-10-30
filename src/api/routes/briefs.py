@@ -12,10 +12,14 @@ from pydantic import BaseModel, Field
 from src.lib.models import Brief, DraftReport, Profile, RefinedReport
 from src.lib.policy import validate_actions
 from src.services.briefs.citations import append_citations
-from src.services.briefs.generator import BriefGenerationContext, BriefGenerationResult, BriefGenerator
+from src.services.briefs.generator import (
+    BriefGenerationContext,
+    BriefGenerationResult,
+    BriefGenerator,
+)
 from src.services.briefs.sms_builder import build_sms
-from src.services.signals.mappings import map_scenario_to_actions
 from src.services.links.link_service import LinkService
+from src.services.signals.mappings import map_scenario_to_actions
 from src.services.sms.solapi_client import SolapiClient, SolapiError
 from src.services.store.memory_store import StoredBrief, get_store
 
@@ -44,7 +48,11 @@ def _get_sms_client() -> SolapiClient:
 def _get_link_service() -> LinkService:
     global _link_service
     if _link_service is None:
-        _link_service = LinkService(base_url=os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs"))
+        _link_service = LinkService(
+            base_url=os.environ.get(
+                "DETAIL_BASE_URL", "https://example.com/public/briefs"
+            )
+        )
     return _link_service
 
 
@@ -53,7 +61,9 @@ class BriefRequest(BaseModel):
     region: str
     crop: str
     stage: str
-    scenario: str | None = Field(None, description="Optional demo scenario code (e.g., HEATWAVE)")
+    scenario: str | None = Field(
+        None, description="Optional demo scenario code (e.g., HEATWAVE)"
+    )
 
 
 class BriefResponse(BaseModel):
@@ -75,7 +85,9 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
     )
 
     if _store.is_opted_out(profile.id):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User opted out of SMS.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="User opted out of SMS."
+        )
 
     _store.save_profile(profile)
 
@@ -86,17 +98,33 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
     try:
         generator = _get_generator()
         generation_result: BriefGenerationResult = generator.generate(
-            BriefGenerationContext(profile=profile, signals=signals, actions=actions, date_range=date_range)
+            BriefGenerationContext(
+                profile=profile, signals=signals, actions=actions, date_range=date_range
+            )
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     except Exception as exc:  # noqa: BLE001 - propagate as HTTP
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
     brief_id = str(uuid4())
-    draft = DraftReport(id=str(uuid4()), brief_id=brief_id, content=generation_result.detailed_report, created_at=datetime.utcnow())
+    draft = DraftReport(
+        id=str(uuid4()),
+        brief_id=brief_id,
+        content=generation_result.detailed_report,
+        created_at=datetime.utcnow(),
+    )
     refined_text = append_citations(generation_result.refined_report, actions)
-    refined = RefinedReport(id=str(uuid4()), draft_id=draft.id, content=refined_text, created_at=datetime.utcnow())
+    refined = RefinedReport(
+        id=str(uuid4()),
+        draft_id=draft.id,
+        content=refined_text,
+        created_at=datetime.utcnow(),
+    )
 
     link_service = _get_link_service()
     link_record = link_service.create_link(brief_id)
@@ -114,19 +142,33 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
 
     sms_body = build_sms(refined_text, link_record.url)
 
-    stored = StoredBrief(profile=profile, brief=brief, draft_report=draft, refined_report=refined, sms_body=sms_body, signals=signals)
+    stored = StoredBrief(
+        profile=profile,
+        brief=brief,
+        draft_report=draft,
+        refined_report=refined,
+        sms_body=sms_body,
+        signals=signals,
+    )
     _store.save_brief(stored)
 
     if sms_body.count("http") > 1:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Multiple links detected in SMS body")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Multiple links detected in SMS body",
+        )
 
     try:
         sms_client = _get_sms_client()
         sms_client.send_sms(profile.phone, sms_body)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     except SolapiError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
 
     preview = sms_body.splitlines()[0][:100]
     return BriefResponse(brief_id=brief_id, message_preview=preview)
@@ -138,7 +180,9 @@ class PreviewRequest(BaseModel):
     region: str
     crop: str
     stage: str
-    scenario: str | None = Field(None, description="Optional demo scenario code (e.g., HEATWAVE)")
+    scenario: str | None = Field(
+        None, description="Optional demo scenario code (e.g., HEATWAVE)"
+    )
     date_range_override: str | None = None
 
 
@@ -166,21 +210,32 @@ def preview_brief(payload: PreviewRequest) -> PreviewResponse:
 
     signals, actions = map_scenario_to_actions(payload.scenario or "")
     validate_actions(actions)
-    date_range = payload.date_range_override or f"{datetime.utcnow():%Y-%m-%d} ~ {(datetime.utcnow() + timedelta(days=14)):%Y-%m-%d}"
+    date_range = (
+        payload.date_range_override
+        or f"{datetime.utcnow():%Y-%m-%d} ~ {(datetime.utcnow() + timedelta(days=14)):%Y-%m-%d}"
+    )
 
     try:
         generator = _get_generator()
         generation_result: BriefGenerationResult = generator.generate(
-            BriefGenerationContext(profile=profile, signals=signals, actions=actions, date_range=date_range)
+            BriefGenerationContext(
+                profile=profile, signals=signals, actions=actions, date_range=date_range
+            )
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     except Exception as exc:  # noqa: BLE001 - propagate as HTTP
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
     refined_text = append_citations(generation_result.refined_report, actions)
     # A preview SMS body is useful for end-to-end grasp; use a dummy link
-    base_url = os.environ.get("DETAIL_BASE_URL", "https://example.com/public/briefs").rstrip("/")
+    base_url = os.environ.get(
+        "DETAIL_BASE_URL", "https://example.com/public/briefs"
+    ).rstrip("/")
     sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
     return PreviewResponse(

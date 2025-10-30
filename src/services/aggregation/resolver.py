@@ -34,7 +34,9 @@ class ProfileResolver:
         key = (profile.region.lower(), profile.crop)
         record = self._records.get(key)
         if not record:
-            raise ValueError(f"Unsupported region/crop combination: {profile.region} / {profile.crop}")
+            raise ValueError(
+                f"Unsupported region/crop combination: {profile.region} / {profile.crop}"
+            )
 
         return ResolvedProfile(
             profile=profile,

@@ -1,0 +1,96 @@
+import os, json
+from typing import List, Tuple
+from dotenv import load_dotenv
+from solapi import SolapiMessageService
+from solapi.model import RequestMessage
+
+load_dotenv(override=True)  # .env 우선 로드
+
+_API_KEY    = os.getenv("SOLAPI_API_KEY")
+_API_SECRET = os.getenv("SOLAPI_API_SECRET")
+_FROM       = os.getenv("SOLAPI_FROM_NUMBER")
+if not (_API_KEY and _API_SECRET and _FROM):
+    raise RuntimeError("SOLAPI env vars missing: SOLAPI_API_KEY / SOLAPI_API_SECRET / SOLAPI_FROM_NUMBER")
+
+_svc = SolapiMessageService(api_key=_API_KEY, api_secret=_API_SECRET)
+
+def _korean_bytes(s: str) -> int:
+    try:
+        return len(s.encode("euc-kr", "ignore"))
+    except Exception:
+        return len(s.encode("utf-8"))
+
+def _choose_rcs_type(text: str) -> str:
+    return "RCS_LMS" if _korean_bytes(text) > 90 else "RCS_SMS"
+
+def _mk_sms(to: str, text: str) -> RequestMessage:
+    return RequestMessage(from_=_FROM, to=to, text=text)
+
+def _mk_rcs(to: str, text: str, quick: List[Tuple[str, str]]) -> RequestMessage:
+    # 유효 타입: RCS_SMS | RCS_LMS | RCS_MMS (본문 길이에 따라 자동 선택)
+    rcs_type = _choose_rcs_type(text)
+    return RequestMessage(
+        from_=_FROM, to=to, text=text, type=rcs_type,
+        rcsOptions={"quickReplies": [{"label": lbl, "payload": payload} for lbl, payload in quick]},
+    )
+
+def _gid(resp):
+    return getattr(getattr(resp, "group_info", None), "group_id", None)
+
+def _send(msg):
+    """SDK send 래퍼: (resp, failed_messages[]) 반환"""
+    resp = _svc.send(msg)
+    failed = []
+    fm = getattr(resp, "failed_messages", None)
+    if fm:
+        for f in fm:
+            failed.append({
+                "status_code": getattr(f, "status_code", None),
+                "status_message": getattr(f, "status_message", None),
+            })
+    return resp, failed
+
+def _exc(e):
+    out = []
+    fm = getattr(e, "failed_messages", None)
+    if fm:
+        for f in fm:
+            out.append({
+                "status_code": getattr(f, "status_code", None),
+                "status_message": getattr(f, "status_message", None),
+            })
+    else:
+        out.append({"exception": repr(e)})
+    return out
+
+def send_rcs_or_sms(to: str, text: str, quick=[("완료","1"),("도움요청","2"),("보류","3")]):
+    """
+    quick이 존재하면 RCS 우선 → 실패 또는 미지원이면 SMS 폴백.
+    detail.rcs_failed / detail.sms_failed 는 실패 목록(없으면 None)을 제공.
+    """
+    detail = {"rcs_failed": None, "sms_failed": None}
+    if not quick:
+        try:
+            s, sf = _send(_mk_sms(to, text))
+            detail["sms_failed"] = sf or None
+            return {"channel": "SMS", "group_id": _gid(s), "detail": detail}
+        except Exception as ee:
+            detail["sms_failed"] = _exc(ee)
+            return {"channel": "SMS", "group_id": None, "detail": detail, "error": "MessageNotReceived"}
+    try:
+        r, rf = _send(_mk_rcs(to, text, quick))
+        if rf:
+            detail["rcs_failed"] = rf
+            s, sf = _send(_mk_sms(to, text))
+            detail["sms_failed"] = sf or None
+            return {"channel": "SMS", "group_id": _gid(s), "detail": detail}
+        return {"channel": "RCS", "group_id": _gid(r), "detail": detail}
+    except Exception as e:
+        detail["rcs_failed"] = _exc(e)
+        try:
+            s, sf = _send(_mk_sms(to, text))
+            detail["sms_failed"] = sf or None
+            return {"channel": "SMS", "group_id": _gid(s), "detail": detail}
+        except Exception as ee:
+            detail["sms_failed"] = _exc(ee)
+            return {"channel": "SMS", "group_id": None, "detail": detail, "error": "MessageNotReceived"}

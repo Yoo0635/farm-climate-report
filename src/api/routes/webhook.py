@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 from src.services.keywords.handler import KeywordHandler
 from src.services.sms.solapi_client import SolapiClient, SolapiError
 
-
 router = APIRouter(prefix="/api/sms", tags=["sms"])
 
 _handler: KeywordHandler | None = None
@@ -45,8 +44,12 @@ def receive_sms(payload: InboundMessage) -> dict[str, str]:
         sms_client = _get_sms_client()
         sms_client.send_sms(profile_id, response_text)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)
+        ) from exc
     except SolapiError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
 
     return {"status": "ok"}

@@ -8,9 +8,13 @@ from fastapi.testclient import TestClient
 
 from src.api.app import create_app
 from src.services.aggregation.aggregator import AggregationService
-from src.services.aggregation.models import AggregateProfile, AggregateRequest, ResolvedProfile
-from src.services.aggregation.resolver import ProfileResolver
 from src.services.aggregation.fetchers import KmaFetcher
+from src.services.aggregation.models import (
+    AggregateProfile,
+    AggregateRequest,
+    ResolvedProfile,
+)
+from src.services.aggregation.resolver import ProfileResolver
 
 
 def _create_client() -> TestClient:
@@ -41,19 +45,45 @@ def test_aggregation_falls_back_to_open_meteo_when_kma_missing() -> None:
             self.payload = payload
             self.calls = 0
 
-        async def fetch(self, resolved: ResolvedProfile) -> dict | None:  # noqa: ARG002 - fixture signature
+        async def fetch(
+            self, resolved: ResolvedProfile
+        ) -> dict | None:  # noqa: ARG002 - fixture signature
             self.calls += 1
             return self.payload
 
     open_meteo_payload = {
         "issued_at": "2025-01-01T00:00:00+09:00",
         "daily": [
-            {"date": "2025-01-01", "tmax_c": 18.0, "tmin_c": 5.0, "precip_mm": 0.0, "wind_ms": 3.0},
-            {"date": "2025-01-02", "tmax_c": 17.5, "tmin_c": 4.5, "precip_mm": 0.6, "wind_ms": 2.8},
+            {
+                "date": "2025-01-01",
+                "tmax_c": 18.0,
+                "tmin_c": 5.0,
+                "precip_mm": 0.0,
+                "wind_ms": 3.0,
+            },
+            {
+                "date": "2025-01-02",
+                "tmax_c": 17.5,
+                "tmin_c": 4.5,
+                "precip_mm": 0.6,
+                "wind_ms": 2.8,
+            },
         ],
         "hourly": [
-            {"ts": "2025-01-01T00:00:00+09:00", "t_c": 6.0, "rh_pct": 65, "wind_ms": 2.4, "precip_mm": 0.0},
-            {"ts": "2025-01-01T01:00:00+09:00", "t_c": 5.8, "rh_pct": 67, "wind_ms": 2.6, "precip_mm": 0.0},
+            {
+                "ts": "2025-01-01T00:00:00+09:00",
+                "t_c": 6.0,
+                "rh_pct": 65,
+                "wind_ms": 2.4,
+                "precip_mm": 0.0,
+            },
+            {
+                "ts": "2025-01-01T01:00:00+09:00",
+                "t_c": 5.8,
+                "rh_pct": 67,
+                "wind_ms": 2.6,
+                "precip_mm": 0.0,
+            },
         ],
         "provenance": "Open-Meteo(2025-01-01)",
     }
@@ -87,7 +117,14 @@ def test_aggregation_falls_back_to_open_meteo_when_kma_missing() -> None:
 def test_kma_fetcher_returns_cached_payload() -> None:
     fetcher = KmaFetcher()
     profile = AggregateProfile(region="Andong-si", crop="apple", stage="flowering")
-    resolved = ResolvedProfile(profile=profile, lat=36.568, lon=128.729, kma_grid=None, kma_area_code="11H10501", npms_region_code="47170")
+    resolved = ResolvedProfile(
+        profile=profile,
+        lat=36.568,
+        lon=128.729,
+        kma_grid=None,
+        kma_area_code="11H10501",
+        npms_region_code="47170",
+    )
 
     cache_key = fetcher._cache_key(resolved)  # noqa: SLF001 - acceptable for test
     cached_payload = {"issued_at": "2025-01-01T00:00:00+09:00"}

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Iterable, Protocol
 
-
 BANNED_KEYWORDS = {"pesticide", "살충제", "약제", "의약", "antibiotic"}
 
 
@@ -20,7 +19,9 @@ def ensure_no_banned_terms(actions: Iterable[HasActionFields]) -> None:
         lower = action.title.lower()
         for keyword in BANNED_KEYWORDS:
             if keyword in lower:
-                raise ValueError(f"Banned term detected in action '{action.title}': {keyword}")
+                raise ValueError(
+                    f"Banned term detected in action '{action.title}': {keyword}"
+                )
 
 
 def ensure_citations_present(actions: Iterable[HasActionFields]) -> None:
