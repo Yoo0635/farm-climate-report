@@ -139,8 +139,8 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--kma-key", help="KMA API Hub key (MidFcstInfoService). Defaults to KMA_API_KEY env.")
     parser.add_argument(
         "--kma-region",
-        default=os.environ.get("KMA_DEFAULT_REGION", "11H10501"),
-        help="KMA mid-term region code (default: 11H10501 — 안동시; override via KMA_DEFAULT_REGION env).",
+        default=os.environ.get("KMA_DEFAULT_REGION", "11H10000"),
+        help="KMA mid-term region code (default: 11H10000 — 경상북도; override via KMA_DEFAULT_REGION env).",
     )
     parser.add_argument("--npms-key", help="NPMS API key (SVC31). Defaults to NPMS_API_KEY env.")
     parser.add_argument(
