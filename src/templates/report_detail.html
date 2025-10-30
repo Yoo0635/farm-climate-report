@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/style.css" />
+    <style>
+      body {
+        font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.7;
+        color: #1e293b;
+        background: #f8fafc;
+        padding: 0;
+        margin: 0;
+      }
+      
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+      }
+      
+      .header {
+        background: linear-gradient(135deg, #0f766e 0%, #14b8a6 100%);
+        color: white;
+        padding: 2.5rem 1.5rem;
+        border-radius: 16px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 16px rgba(15, 118, 110, 0.2);
+      }
+      
+      .header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+      }
+      
+      .header .meta {
+        font-size: 0.95rem;
+        opacity: 0.95;
+        margin: 0;
+      }
+      
+      .section {
+        background: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      }
+      
+      .section h2 {
+        color: #0f766e;
+        font-size: 1.4rem;
+        margin: 0 0 1.25rem 0;
+        font-weight: 600;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 0.75rem;
+      }
+      
+      .section h3 {
+        color: #334155;
+        font-size: 1.1rem;
+        margin: 1.5rem 0 0.75rem 0;
+        font-weight: 600;
+      }
+      
+      .section p,
+      .section li {
+        margin: 0.75rem 0;
+        color: #475569;
+      }
+      
+      .section ul {
+        padding-left: 1.5rem;
+        margin: 0.75rem 0;
+      }
+      
+      .section li {
+        margin-bottom: 0.5rem;
+      }
+      
+      .risk-item {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 0.75rem 1rem;
+        margin: 0.75rem 0;
+        border-radius: 4px;
+      }
+      
+      .risk-item strong {
+        color: #92400e;
+      }
+      
+      .action-box {
+        background: #dbeafe;
+        border-left: 4px solid #3b82f6;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+      }
+      
+      .action-box h3 {
+        color: #1e40af;
+        margin-top: 0;
+        font-size: 1.05rem;
+      }
+      
+      .checklist-item {
+        background: #f1f5f9;
+        padding: 0.75rem 1rem;
+        margin: 0.5rem 0;
+        border-radius: 6px;
+        border-left: 3px solid #64748b;
+      }
+      
+      .checklist-item strong {
+        color: #1e293b;
+      }
+      
+      .source-section {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        padding: 1.5rem;
+        border-radius: 8px;
+      }
+      
+      .source-section h2 {
+        color: #475569;
+        font-size: 1.1rem;
+        border-bottom: 1px solid #cbd5e1;
+      }
+      
+      .source-section ul {
+        margin: 0.5rem 0;
+      }
+      
+      .note-section {
+        background: #fef9c3;
+        border: 1px solid #fde047;
+        padding: 1.25rem;
+        border-radius: 8px;
+        margin-top: 1.5rem;
+      }
+      
+      .note-section h3 {
+        color: #854d0e;
+        margin-top: 0;
+        font-size: 1rem;
+      }
+      
+      .note-section p {
+        color: #713f12;
+        margin: 0.5rem 0;
+      }
+      
+      @media (max-width: 768px) {
+        .container {
+          padding: 1rem;
+        }
+        
+        .header {
+          padding: 1.75rem 1.25rem;
+        }
+        
+        .header h1 {
+          font-size: 1.4rem;
+        }
+        
+        .section {
+          padding: 1.5rem;
+        }
+        
+        .section h2 {
+          font-size: 1.2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h1>{{ report_title }}</h1>
+        <p class="meta">{{ metadata }}</p>
+      </div>
+
+      <!-- 1. 기상·생육 리스크 요약 -->
+      <div class="section">
+        <h2>1) 기상·생육 리스크 요약</h2>
+        <div class="risk-item">
+          <strong>서리/한냉:</strong> 11/3 -2.0°C, 11/4 -0.8°C, 11/5 -0.1°C 예보. 개화기 개화·만개기는 -2°C 전후에서도 피해가 발생할 수 있어 매우 민감합니다. 11/3~11/5 사이 복사냉각 조건(맑음·약한 바람) 동반으로 서리 리스크 매우 높음(KMA 2025; USU Extension 2012).
+        </div>
+        <div class="risk-item">
+          <strong>강풍/수분:</strong> 11/1(6.4 m/s), 11/2(7.8 m/s) 강풍. 벌 비행과 수분활동 저하 우려. 11/6은 온난·약한 바람(1.5 m/s)으로 방제·작업 적합 일시(KMA 2025).
+        </div>
+        <div class="risk-item">
+          <strong>강우/병 발생창:</strong> 11/8 7.8 mm 비 예보. 개화기 습윤 기간 발생으로 화상병(개화기 감염)·검은별무늬병(잎 습윤) 감염 창 열릴 수 있음. 다만 11/3~5 저온으로 전반적 압력은 낮다가 11/6~9 온난·습윤으로 부분 상승 가능(KMA 2025).
+        </div>
+        <div class="risk-item">
+          <strong>토양수분:</strong> 11/8 이전 무강우 지속 → 토양 표층 건조. 응급 서리 대응을 위한 지표면 가열효과 확보 차원에서 사전 관수 여부 검토.
+        </div>
+      </div>
+
+      <!-- 2. 병해충 관측 요약 -->
+      <div class="section">
+        <h2>2) 병해충 관측 요약 및 해석</h2>
+        <p><strong>트랩 포획(안동시):</strong> 사과굴나방 93.6, 복숭아순나방 17.25, 복숭아심식나방 8.5, 은무늬굴나방 4.0, 사과애모무늬잎말이나방 1.0(NPMS 2025).</p>
+        
+        <h3>시사점</h3>
+        <ul>
+          <li><strong>복숭아순나방(Oriental fruit moth)</strong>은 사과 신초·과실 가해. 포획 17.25는 방제 기준(트랩 10마리/주) 초과 → 성페로몬 교란/표적 방제 시나리오 사전 수립 필요(살충제는 개화기 벌 보호상 비권장, 낙화기 이후 검토 권고)(NPMS 2025).</li>
+          <li><strong>복숭아심식나방</strong>(사과 주요 과실 해충) 8.5로 유의 수준. 낙화 직후 1세대 대응 시기 준비.</li>
+          <li><strong>사과굴나방</strong>(잎굴파리류) 고밀도. 광범위 약제 살포는 개화기 벌 위험. 포집 추세(연속 2~3일 지속 포획) 확인 후, 낙화기 이후 생육단계와 적산온도에 맞춘 표적 방제 전략 검토 권고(NPMS 2025).</li>
+        </ul>
+      </div>
+
+      <!-- 3. 상위 3가지 권고 -->
+      <div class="section">
+        <h2>3) 상위 3가지 권고(언제·트리거·조치)</h2>
+        
+        <div class="action-box">
+          <h3>권고 1) 개화기 서리 피해 최소화</h3>
+          <p><strong>언제:</strong> 11/2 오후 준비, 11/3~11/5 새벽 운영(특히 11/3 최저 -2.0°C)</p>
+          <p><strong>트리거:</strong> 최저기온 예보 0°C 이하 + 맑음/약한 바람(복사냉각) + 과수원 저지대</p>
+          <p><strong>조치 요약:</strong></p>
+          <ul>
+            <li><strong>사전:</strong> 지표면 열저장 극대화(잔디·잡초 단순 예초, 지표면 적정 습윤 유지), 바람막이·저지대 냉기배출로 점검.</li>
+            <li><strong>실행:</strong> 가용한 서리대응 수단(상대풍기, 미세살수, 열원 등) 가동 준비 및 시험 가동. 살수 시 빙결 중단 없는 연속 운영 등 표준 절차 준수(구체 운전조건은 장비 매뉴얼/지역 지침 참조).</li>
+            <li><strong>사후:</strong> 피해 조사(꽃/암술 갈변, 냉해 반점)로 착과 저하 위험 블록 파악 및 이후 적과·영양전략 조정.</li>
+            <li><strong>유의:</strong> 개화기 살수는 벌 비행 시간 회피, 통로 빙판 안전조치(USU Extension 2012; KMA 2025).</li>
+          </ul>
+        </div>
+
+        <div class="action-box">
+          <h3>권고 2) 개화기 병해(화상병·검은별무늬병) 사전 억제</h3>
+          <p><strong>언제:</strong> 11/6 오후~11/7(사전 보호 조치), 11/8 강우 전·후 점검, 11/9 사후 조사</p>
+          <p><strong>트리거:</strong> 11/8 강우 예보(7.8 mm) + 11/6~9의 온난 조건(최고 16~18°C) + 개화 지속</p>
+          <p><strong>조치 요약:</strong></p>
+          <ul>
+            <li><strong>개화기 위생·관리:</strong> 상처 최소화(전정·예초 등 기계 작업 자제), 상시 도구 소독, 과수원 내 배수로 확보로 물고임 방지.</li>
+            <li><strong>방제 검토:</strong> 지역 예찰지수(화상병 EIP/Blossom risk, 검은별무늬병 감염표) 확인 후, 비 전 예방적 보호제 사용 여부 '검토 권고'. 벌 보호를 위해 일몰 후·벌 비활동 시간대, 개화부 직접 피복 등 현장 수칙 준수.</li>
+            <li><strong>사후:</strong> 11/9 병반(화상병 수액·흑반, 검은별무늬 초기 반점) 조기 탐지. 의심주 즉시 격리·신고 및 제거·소각은 지침에 따름.</li>
+            <li><strong>관수:</strong> 비 예보 전날 과도한 상면관수 지양(개화부 습윤 시간 단축)(KMA 2025, RDA 지침 일반론; 적용은 지역 방역지침 준수).</li>
+          </ul>
+        </div>
+
+        <div class="action-box">
+          <h3>권고 3) 나방류(복숭아순나방·복숭아심식나방·사과굴나방) 통합관리 계획(벌 보호 우선)</h3>
+          <p><strong>언제:</strong> 11/1~11/2 포획 강화/바이오픽스 설정, 11/6 장비·교란제 설치 적기, 낙화 직후(블록별) 표적 방제 '검토'</p>
+          <p><strong>트리거:</strong> 트랩 포획 고밀도(OFM 17.25, PFM 8.5, leafminer 93.6) + 낙화 시작/완료 + 병해충 모델의 적산온도 도달</p>
+          <p><strong>조치 요약:</strong></p>
+          <ul>
+            <li><strong>모니터링:</strong> 트랩 일일 점검·포획수 기록, '지속 포획 시작일'(바이오픽스) 설정. 급증 블록 지도화.</li>
+            <li><strong>예방적 수단:</strong> 성페로몬 교란제(끈·발산기) 설치 시기 검토(개화기 벌 혼란 최소화 지침 준수), 과원 외곽부 우선.</li>
+            <li><strong>화학적 방제:</strong> 개화기 살포는 벌 위험으로 지양. 낙화기 이후, 표적 해충 세대 전개(유충가해 전) 타이밍에 맞춘 선택적 약제 사용 '검토 권고'(스펙트럼·천적·벌 안전성 고려).</li>
+            <li><strong>위생:</strong> 월동부·가해 신초 절단·제거(낙화 후), 과실 접촉 전 유충 밀도 억제(NPMS 2025).</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 4. 2주 운영 체크리스트 -->
+      <div class="section">
+        <h2>4) 2주 운영 체크리스트(세부 일정 제안)</h2>
+        <div class="checklist-item">
+          <strong>10/31(금):</strong> 개화 상황 파악, 트랩 위치 보정·교체, 서리 대응 장비·수원·연료 점검. 예초로 지표면 열저장 개선.
+        </div>
+        <div class="checklist-item">
+          <strong>11/1(토)~11/2(일):</strong> 강풍으로 벌 활동 저하 예상 → 수정 보완 위해 벌통 배치 최적화(바람 그늘), 살포 작업은 비권장(비산·약효 저하). 11/2 오후 서리 대응 리허설.
+        </div>
+        <div class="checklist-item">
+          <strong>11/3(월)~11/5(수) 새벽:</strong> 서리 대응 실가동. 오전 피해 샘플링(꽃 100송이/블록).
+        </div>
+        <div class="checklist-item">
+          <strong>11/6(목):</strong> 온난·약한 바람. 11/8 비 대비 보호 방제 '검토' 가능한 창(벌 비활동 시간대). 성페로몬 교란제/트랩 재점검.
+        </div>
+        <div class="checklist-item">
+          <strong>11/7(금):</strong> 바람 다소 강함(5.4 m/s) → 광범위 살포 비권장. 장비 캘리브레이션·블록별 우선순위 확정.
+        </div>
+        <div class="checklist-item">
+          <strong>11/8(토):</strong> 강우일. 토사·배수로 점검, 상면관수 중단. 병 발생 리스크 기록.
+        </div>
+        <div class="checklist-item">
+          <strong>11/9(일):</strong> 맑음·온화. 병반 초기 조사, 포획수 취합→바이오픽스 확정 및 낙화 후 방제창 계산 착수.
+        </div>
+        <div class="checklist-item">
+          <strong>11/10~11/14(주 2):</strong> 낙화 진행률에 따라 블록 구분(조·중·만개). 사과굴나방 엽피해 탐지, OFM/심식나방 1세대 유충기 진입 예상시기 계산(지역 모델) 후 표적 방제 '검토'. 서리 피해 구역은 착과 관리·관수·양분 전략 보정.
+        </div>
+      </div>
+
+      <!-- 5. 현장 유의·운영 팁 -->
+      <div class="section">
+        <h2>5) 현장 유의·운영 팁</h2>
+        <ul>
+          <li><strong>벌 보호:</strong> 개화 중 약제 살포 회피. 불가피시 일몰 후, 개화부 직접 살포 최소화, 등록자재·표준지침 준수.</li>
+          <li><strong>살포 기상창:</strong> 풍속 1–3 m/s, 무강우, 습도·온도 적정일(11/6 우선).</li>
+          <li><strong>영양·관수:</strong> 개화기 질소 과다 자제(연약신초·병해 과민화 방지). 서리 전일 토양 적정 수분은 복사냉각 완화에 기여하나, 야간 상면 살수는 결빙·피해 위험 → 장비·지침 기반 선택 적용.</li>
+          <li><strong>기록:</strong> 블록별 개화율, 서리 대응 시간, 포획수·바이오픽스, 강우·엽습 시간 기록 → 낙화 후 방제 타이밍 근거로 활용.</li>
+        </ul>
+      </div>
+
+      <!-- 근거·출처 -->
+      <div class="section source-section">
+        <h2>근거·출처</h2>
+        <ul>
+          <li><strong>기상:</strong> KMA 예보(2025-10-31), Open-Meteo(2025-10-31).</li>
+          <li><strong>병해충 관측·임계 해석:</strong> 국립농업과학원 병해충예측시스템 NPMS SVC53(2025).</li>
+          <li><strong>개화기 서리 임계온도·관리 일반론:</strong> USU Extension, Critical Temperatures for Frost Damage on Fruit Trees(2012). 지역 적용은 농촌진흥청·지자체 지침 준수.</li>
+        </ul>
+      </div>
+
+      <!-- 메모 -->
+      <div class="note-section">
+        <h3>📌 메모</h3>
+        <p>본 계획은 제공된 10일 예보·관측에 기반한 2주 운영 초안입니다. 예보 변동(특히 최저기온·강우량)에 따라 24–48시간 전에 재평가하세요.</p>
+      </div>
+    </div>
+  </body>
+</html>
