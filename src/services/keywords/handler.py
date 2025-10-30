@@ -16,7 +16,7 @@ class KeywordHandler:
         self._store = get_store()
         self._link_service = link_service or LinkService(
             base_url=os.environ.get(
-                "DETAIL_BASE_URL", "https://example.com/public/briefs"
+                "DETAIL_BASE_URL", "https://parut.com/public/briefs"
             )
         )
         self._change_flow = ChangeFlow(self._store)

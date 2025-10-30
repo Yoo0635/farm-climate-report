@@ -6,7 +6,7 @@ and writes a detailed log file.
 
 Usage example:
   python scripts/pipeline_preview.py \
-    --region KR/Seoul --crop Strawberry --stage Flowering --scenario HEATWAVE \
+    --region KR/Seoul --crop Strawberry --stage Flowering \
     --offline --log logs/pipeline.log
 """
 
@@ -36,7 +36,7 @@ def _load_pipeline_modules():
     from src.services.briefs.citations import append_citations
     from src.services.briefs.generator import BriefGenerationContext, BriefGenerator
     from src.services.briefs.sms_builder import build_sms
-    from src.services.signals.mappings import map_scenario_to_actions
+    from src.services.signals.mappings import default_signals_actions
 
     return (
         Profile,
@@ -45,7 +45,7 @@ def _load_pipeline_modules():
         BriefGenerationContext,
         BriefGenerator,
         build_sms,
-        map_scenario_to_actions,
+        default_signals_actions,
     )
 
 
@@ -81,9 +81,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--crop", required=True, help="Crop name, e.g., Strawberry")
     parser.add_argument("--stage", required=True, help="Growth stage, e.g., Flowering")
     parser.add_argument(
-        "--scenario", default="", help="Optional demo scenario code, e.g., HEATWAVE"
-    )
-    parser.add_argument(
         "--date-range", dest="date_range", default=None, help="Override date range text"
     )
     parser.add_argument(
@@ -109,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
         BriefGenerationContext,
         BriefGenerator,
         build_sms,
-        map_scenario_to_actions,
+        default_signals_actions,
     ) = _load_pipeline_modules()
     args = parse_args(argv)
 
@@ -128,7 +125,7 @@ def main(argv: list[str] | None = None) -> int:
         language="ko",
         opt_in=True,
     )
-    signals, actions = map_scenario_to_actions(args.scenario or "")
+    signals, actions = default_signals_actions()
     validate_actions(actions)
     now = datetime.now(UTC)
     date_range = (
@@ -137,11 +134,10 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info("Starting pipeline preview")
     logger.info(
-        "Inputs: region=%s crop=%s stage=%s scenario=%s",
+        "Inputs: region=%s crop=%s stage=%s",
         args.region,
         args.crop,
         args.stage,
-        args.scenario,
     )
     logger.info("Date range: %s", date_range)
 
@@ -159,15 +155,19 @@ def main(argv: list[str] | None = None) -> int:
     # Post-processing
     refined_text = append_citations(gen.refined_report, actions)
     base_url = os.environ.get(
-        "DETAIL_BASE_URL", "https://example.com/public/briefs"
+        "DETAIL_BASE_URL", "https://parut.com/public/briefs"
     ).rstrip("/")
     sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
     # Console-friendly output
     print("\n=== Pipeline Preview ===")
     print(f"Region/Crop/Stage: {args.region} / {args.crop} / {args.stage}")
-    print(f"Scenario: {args.scenario or 'GENERAL'}")
+    print("Scenario: n/a (evidence-driven)")
     print(f"Date Range: {date_range}")
+    if gen.prompt_path:
+        print(f"Prompt file: {gen.prompt_path}")
+    if gen.llm2_output_path:
+        print(f"LLM-2 output file: {gen.llm2_output_path}")
     print("\n--- Detailed Report (first 600 chars) ---")
     print(gen.detailed_report[:600])
     print("\n--- Refined Report ---")
@@ -183,6 +183,10 @@ def main(argv: list[str] | None = None) -> int:
     logger.debug("Refined report (full):\n%s", refined_text)
     logger.info("SMS body length: %d", len(sms_body))
     logger.debug("SMS body (full):\n%s", sms_body)
+    if gen.prompt_path:
+        logger.info("LLM-1 prompt logged at: %s", gen.prompt_path)
+    if gen.llm2_output_path:
+        logger.info("LLM-2 output logged at: %s", gen.llm2_output_path)
     logger.info("Completed successfully. Log: %s", str(args.log))
 
     return 0

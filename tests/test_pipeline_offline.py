@@ -72,7 +72,6 @@ def test_preview_endpoint_offline() -> None:
         "region": "KR/Seoul",
         "crop": "Strawberry",
         "stage": "Flowering",
-        "scenario": "HEATWAVE",
     }
     resp = client.post("/api/briefs/preview", json=payload)
     assert resp.status_code == 200

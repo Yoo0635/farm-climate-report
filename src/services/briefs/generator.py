@@ -1,14 +1,20 @@
-"""Generate personalized brief content using the two-step LLM pipeline."""
+"""Generate personalized brief content using the evidence-backed pipeline."""
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from dataclasses import dataclass
 from typing import Sequence
 
 from src.lib.models import Action, Profile, Signal
+from src.services.aggregation.models import AggregateRequest
 from src.services.llm.factory import build_llm_stack
 from src.services.llm.gemini_client import GeminiRefiner
 from src.services.llm.openai_client import OpenAILLM
+from src.services.reports.reporter import EvidenceReporter, ReportResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -27,34 +33,72 @@ class BriefGenerationResult:
 
     detailed_report: str
     refined_report: str
+    prompt_path: str | None = None
+    output_path: str | None = None
+    llm2_prompt_path: str | None = None
+    llm2_output_path: str | None = None
 
 
 class BriefGenerator:
-    """Coordinates RAG, LLM-1, and LLM-2 to produce brief content."""
+    """Coordinates aggregation, LLM-1, and LLM-2 to produce brief content."""
 
     def __init__(
         self,
         llm_primary: OpenAILLM | None = None,
         llm_refiner: GeminiRefiner | None = None,
+        reporter: EvidenceReporter | None = None,
     ) -> None:
-        if llm_primary is None or llm_refiner is None:
-            primary, refiner = build_llm_stack()
-            self._llm_primary = llm_primary or primary  # type: ignore[assignment]
-            self._llm_refiner = llm_refiner or refiner  # type: ignore[assignment]
-        else:
-            self._llm_primary = llm_primary
-            self._llm_refiner = llm_refiner
+        primary, refiner = build_llm_stack()
+        self._llm_primary = llm_primary or primary  # type: ignore[assignment]
+        self._llm_refiner = llm_refiner or refiner  # type: ignore[assignment]
+        self._reporter = reporter or EvidenceReporter()
 
     def generate(self, context: BriefGenerationContext) -> BriefGenerationResult:
         """Run pipeline and return raw outputs; downstream components format SMS/detail page."""
-        detailed_prompt = self._build_detailed_prompt(context)
+        evidence_report = self._generate_with_evidence(context)
+        if evidence_report is not None:
+            detailed = evidence_report.detailed_report
+            refined = evidence_report.refined_report or self._llm_refiner.refine(detailed)
+            return BriefGenerationResult(
+                detailed_report=detailed,
+                refined_report=refined,
+                prompt_path=evidence_report.prompt_path,
+                output_path=evidence_report.output_path,
+                llm2_prompt_path=evidence_report.llm2_prompt_path,
+                llm2_output_path=evidence_report.llm2_output_path,
+            )
+
+        logger.debug(
+            "Evidence-based generation unavailable; falling back to legacy prompt (%s/%s)",
+            context.profile.region,
+            context.profile.crop,
+        )
+        detailed_prompt = self._build_legacy_prompt(context)
         detailed_report = self._llm_primary.generate_report(detailed_prompt)
         refined = self._llm_refiner.refine(detailed_report)
-        return BriefGenerationResult(
-            detailed_report=detailed_report, refined_report=refined
+        return BriefGenerationResult(detailed_report=detailed_report, refined_report=refined)
+
+    def _generate_with_evidence(self, context: BriefGenerationContext) -> ReportResult | None:
+        """Attempt to use the EvidenceReporter; return None if unsupported or unavailable."""
+        request = AggregateRequest(
+            region=context.profile.region,
+            crop=context.profile.crop,
+            stage=context.profile.stage,
         )
 
-    def _build_detailed_prompt(self, context: BriefGenerationContext) -> str:
+        try:
+            return asyncio.run(self._reporter.generate(request, refine=True))
+        except ValueError as exc:
+            if "Unsupported region/crop" in str(exc):
+                logger.debug("Evidence reporter skipped: %s", exc)
+                return None
+            logger.warning("Evidence reporter failed with ValueError: %s", exc)
+            return None
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Evidence reporter failed; falling back to legacy prompt: %s", exc)
+            return None
+
+    def _build_legacy_prompt(self, context: BriefGenerationContext) -> str:
         action_summary = "\n".join(
             f"- {action.title} (시기: {action.timing_window}, 트리거: {action.trigger})"
             for action in context.actions

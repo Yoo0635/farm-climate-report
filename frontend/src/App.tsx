@@ -14,7 +14,6 @@ type FormState = {
   region: string;
   crop: string;
   stage: string;
-  scenario?: string;
 };
 
 const LS_KEY = "fcr:console:form";
@@ -26,7 +25,6 @@ export default function App() {
     region: "수도권",
     crop: "딸기",
     stage: "발아기",
-    scenario: "폭염",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +86,6 @@ export default function App() {
         region: form.region,
         crop: form.crop,
         stage: form.stage,
-        scenario: form.scenario || undefined,
       };
       const res = await fetch(`${API_BASE}/api/briefs/preview`, {
         method: "POST",
@@ -115,7 +112,6 @@ export default function App() {
         region: form.region,
         crop: form.crop,
         stage: form.stage,
-        scenario: form.scenario || undefined,
       };
       const res = await fetch(`${API_BASE}/api/briefs`, {
         method: "POST",
@@ -229,7 +225,7 @@ export default function App() {
                 onChange={(e) =>
                   setForm((s) => ({ ...s, phone: e.target.value }))
                 }
-                placeholder="010-1234-5678 또는 +821012345678"
+                placeholder="010-2216-8618 또는 +821022168618"
               />
               <div
                 className="muted"
@@ -278,17 +274,8 @@ export default function App() {
               />
             </div>
             <div className="field">
-              <label>시나리오(선택)</label>
-              <input
-                value={form.scenario || ""}
-                onChange={(e) =>
-                  setForm((s) => ({
-                    ...s,
-                    scenario: e.target.value || undefined,
-                  }))
-                }
-                placeholder="폭염 / 강우 / 강풍 / 한파"
-              />
+              <label>시나리오</label>
+              <input value="(legacy 제거됨)" disabled />
             </div>
           </div>
           <div className="toolbar" style={{ marginTop: ".9rem" }}>
@@ -400,18 +387,9 @@ export default function App() {
               {preview.refined_report}
             </pre>
             <details style={{ marginTop: "0.5rem" }}>
-              <summary>상세 보고서 · RAG 로그</summary>
-              <h4>상세 보고서</h4>
+              <summary>상세 보고서</summary>
               <pre style={{ whiteSpace: "pre-wrap" }}>
                 {preview.detailed_report}
-              </pre>
-              <h4>RAG Passages</h4>
-              <pre>
-                {JSON.stringify(preview.rag_passages ?? "N/A", null, 2)}
-              </pre>
-              <h4>Web Findings</h4>
-              <pre>
-                {JSON.stringify(preview.web_findings ?? "N/A", null, 2)}
               </pre>
             </details>
           </section>

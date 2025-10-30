@@ -11,7 +11,7 @@ This guide demonstrates end-to-end flows for the hackathon MVP.
 Example JSON payload (LLM-first):
 ```json
 {
-  "phone": "+821012345678",
+  "phone": "+821022168618",
   "region": "KR/Seoul",
   "crop": "Strawberry",
   "stage": "Flowering",
@@ -23,7 +23,7 @@ Send (example):
 ```bash
 curl -X POST https://api.example.com/api/briefs \
   -H 'Content-Type: application/json' \
-  -d '{"phone":"+821012345678","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering","scenario":"HEATWAVE"}'
+  -d '{"phone":"+821022168618","region":"KR/Seoul","crop":"Strawberry","stage":"Flowering"}'
 ```
 
 Expected result:
@@ -36,7 +36,7 @@ Expected result:
 ```bash
 curl -X POST https://api.example.com/api/sms/webhook \
   -H 'Content-Type: application/json' \
-  -d '{"from":"+821012345678","to":"+82105551234","message":"REPORT"}'
+  -d '{"from":"+821022168618","to":"+82105551234","message":"REPORT"}'
 ```
 
 Expected result:

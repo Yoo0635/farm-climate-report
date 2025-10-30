@@ -32,10 +32,34 @@ for env_path in (root_env, back_env):
     if env_path.exists():
         load_dotenv(env_path, override=False)
 
-# 키 이름 호환 (루트와 백엔드 변수명 둘 다 지원)
-API_KEY = os.getenv("SOLAPI_API_KEY") or os.getenv("SOLAPI_ACCESS_KEY")
-API_SECRET = os.getenv("SOLAPI_API_SECRET") or os.getenv("SOLAPI_SECRET_KEY")
-FROM = os.getenv("SOLAPI_FROM_NUMBER") or os.getenv("SOLAPI_SENDER_NUMBER")
+LEGACY_ENV_NAMES = {
+    "SOLAPI_ACCESS_KEY": ["SOLAPI_API_KEY"],
+    "SOLAPI_SECRET_KEY": ["SOLAPI_API_SECRET"],
+    "SOLAPI_SENDER_NUMBER": ["SOLAPI_FROM_NUMBER"],
+}
+
+
+def _env(name: str) -> tuple[str | None, bool]:
+    current = os.getenv(name)
+    if current:
+        return current, False
+    for legacy in LEGACY_ENV_NAMES.get(name, []):
+        legacy_value = os.getenv(legacy)
+        if legacy_value:
+            return legacy_value, True
+    return None, False
+
+
+API_KEY, key_from_legacy = _env("SOLAPI_ACCESS_KEY")
+API_SECRET, secret_from_legacy = _env("SOLAPI_SECRET_KEY")
+FROM, sender_from_legacy = _env("SOLAPI_SENDER_NUMBER")
+
+if key_from_legacy or secret_from_legacy or sender_from_legacy:
+    print(
+        "[WARN] Legacy SOLAPI_* variables detected; migrate to "
+        "SOLAPI_ACCESS_KEY / SOLAPI_SECRET_KEY / SOLAPI_SENDER_NUMBER.",
+        file=sys.stderr,
+    )
 
 # 3) Solapi 준비(키 없으면 드라이런)
 DRY_SEND = False

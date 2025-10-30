@@ -5,7 +5,7 @@
 - `OPENAI_API_KEY`: API key for LLM-1 (detailed report, RAG context)
 - `GEMINI_API_KEY`: API key for LLM-2 (Korean-friendly refinement)
 - `SOLAPI_ACCESS_KEY`, `SOLAPI_SECRET_KEY`, `SOLAPI_SENDER_NUMBER`: SMS provider credentials
-- `DETAIL_BASE_URL`: Base URL used to build public detail links. Set to your server URL with `/public/briefs` suffix (e.g., `https://<server-domain>/public/briefs`).
+- `DETAIL_BASE_URL`: Base URL used to build public detail links. Defaults to `https://parut.com/public/briefs` (override per deployment if needed).
 
 ## Setup Steps
 

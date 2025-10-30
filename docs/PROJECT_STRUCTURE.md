@@ -124,7 +124,7 @@ farm-climate-reporter/
 **요청:**
 ```json
 {
-  "phone": "+821012345678",
+  "phone": "+821022168618",
   "region": "수도권",
   "crop": "딸기",
   "stage": "발아기",
@@ -186,7 +186,7 @@ farm-climate-reporter/
 **요청 (SOLAPI에서 전달):**
 ```json
 {
-  "from": "+821012345678",
+  "from": "+821022168618",
   "to": "+821087654321",
   "message": "REPORT",
   "timestamp": "2025-10-30T12:00:00Z"
@@ -245,7 +245,7 @@ https://your-server.com/public/briefs/abc123def456
 ```python
 {
   "id": "전화번호",
-  "phone": "+821012345678",
+  "phone": "+821022168618",
   "region": "수도권",
   "crop": "딸기",
   "stage": "발아기",
@@ -270,7 +270,7 @@ https://your-server.com/public/briefs/abc123def456
 ```python
 {
   "id": "uuid",
-  "profile_id": "+821012345678",
+  "profile_id": "+821022168618",
   "horizon_days": 14,
   "actions": [Action, Action, Action],
   "triggers": ["HEATWAVE"],
@@ -433,10 +433,10 @@ SOLAPI_SENDER_NUMBER=01012345678
 SOLAPI_DRY_RUN=1  # 1이면 발송 안함
 
 # 데모
-DEMO_RECIPIENT_NUMBER=+821012345678
+DEMO_RECIPIENT_NUMBER=+821022168618
 
 # 링크 베이스 URL
-DETAIL_BASE_URL=https://your-server.com/public/briefs
+DETAIL_BASE_URL=https://parut.com/public/briefs
 
 # 저장소
 STORE_BACKEND=postgres  # 또는 memory

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -19,11 +21,16 @@ from src.services.briefs.generator import (
 )
 from src.services.briefs.sms_builder import build_sms
 from src.services.links.link_service import LinkService
-from src.services.signals.mappings import map_scenario_to_actions
+from src.services.signals.mappings import default_signals_actions
 from src.services.sms.solapi_client import SolapiClient, SolapiError
 from src.services.store.memory_store import StoredBrief, get_store
 
 router = APIRouter(prefix="/api/briefs", tags=["briefs"])
+logger = logging.getLogger(__name__)
+
+DEFAULT_REGION = "Andong-si"
+DEFAULT_CROP = "apple"
+DEFAULT_STAGE = "flowering"
 
 _store = get_store()
 _generator: BriefGenerator | None = None
@@ -50,7 +57,7 @@ def _get_link_service() -> LinkService:
     if _link_service is None:
         _link_service = LinkService(
             base_url=os.environ.get(
-                "DETAIL_BASE_URL", "https://example.com/public/briefs"
+                "DETAIL_BASE_URL", "https://parut.com/public/briefs"
             )
         )
     return _link_service
@@ -58,11 +65,14 @@ def _get_link_service() -> LinkService:
 
 class BriefRequest(BaseModel):
     phone: str = Field(..., description="E.164 formatted phone number")
-    region: str
-    crop: str
-    stage: str
-    scenario: str | None = Field(
-        None, description="Optional demo scenario code (e.g., HEATWAVE)"
+    region: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_REGION}."
+    )
+    crop: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_CROP}."
+    )
+    stage: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_STAGE}."
     )
 
 
@@ -74,12 +84,16 @@ class BriefResponse(BaseModel):
 @router.post("", response_model=BriefResponse, status_code=status.HTTP_200_OK)
 def create_brief(payload: BriefRequest) -> BriefResponse:
     """Generate a brief and dispatch SMS."""
+    region = (payload.region or DEFAULT_REGION).strip() or DEFAULT_REGION
+    crop = (payload.crop or DEFAULT_CROP).strip() or DEFAULT_CROP
+    stage = (payload.stage or DEFAULT_STAGE).strip() or DEFAULT_STAGE
+
     profile = Profile(
         id=payload.phone,
         phone=payload.phone,
-        region=payload.region,
-        crop=payload.crop,
-        stage=payload.stage,
+        region=region,
+        crop=crop,
+        stage=stage,
         language="ko",
         opt_in=True,
     )
@@ -91,7 +105,7 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
 
     _store.save_profile(profile)
 
-    signals, actions = map_scenario_to_actions(payload.scenario or "")
+    signals, actions = default_signals_actions()
     validate_actions(actions)
     date_range = f"{datetime.utcnow():%Y-%m-%d} ~ {(datetime.utcnow() + timedelta(days=14)):%Y-%m-%d}"
 
@@ -110,6 +124,19 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
+
+    if generation_result.prompt_path:
+        logger.info(
+            "brief.llm_logs %s",
+            json.dumps(
+                {
+                    "prompt_path": generation_result.prompt_path,
+                    "llm1_output_path": generation_result.output_path,
+                    "llm2_output_path": generation_result.llm2_output_path,
+                },
+                ensure_ascii=False,
+            ),
+        )
 
     brief_id = str(uuid4())
     draft = DraftReport(
@@ -177,11 +204,14 @@ def create_brief(payload: BriefRequest) -> BriefResponse:
 class PreviewRequest(BaseModel):
     """Request to run the LLM pipeline without sending SMS."""
 
-    region: str
-    crop: str
-    stage: str
-    scenario: str | None = Field(
-        None, description="Optional demo scenario code (e.g., HEATWAVE)"
+    region: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_REGION}."
+    )
+    crop: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_CROP}."
+    )
+    stage: str | None = Field(
+        None, description=f"Optional. Defaults to {DEFAULT_STAGE}."
     )
     date_range_override: str | None = None
 
@@ -198,17 +228,21 @@ class PreviewResponse(BaseModel):
 def preview_brief(payload: PreviewRequest) -> PreviewResponse:
     """Run RAG → LLM-1 → LLM-2 and return outputs; do not send SMS."""
     # Build a throwaway profile for pipeline inputs (no SMS dispatch)
+    region = (payload.region or DEFAULT_REGION).strip() or DEFAULT_REGION
+    crop = (payload.crop or DEFAULT_CROP).strip() or DEFAULT_CROP
+    stage = (payload.stage or DEFAULT_STAGE).strip() or DEFAULT_STAGE
+
     profile = Profile(
         id="preview",
         phone="",
-        region=payload.region,
-        crop=payload.crop,
-        stage=payload.stage,
+        region=region,
+        crop=crop,
+        stage=stage,
         language="ko",
         opt_in=True,
     )
 
-    signals, actions = map_scenario_to_actions(payload.scenario or "")
+    signals, actions = default_signals_actions()
     validate_actions(actions)
     date_range = (
         payload.date_range_override
@@ -231,10 +265,23 @@ def preview_brief(payload: PreviewRequest) -> PreviewResponse:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
 
+    if generation_result.prompt_path:
+        logger.info(
+            "brief.preview.llm_logs %s",
+            json.dumps(
+                {
+                    "prompt_path": generation_result.prompt_path,
+                    "llm1_output_path": generation_result.output_path,
+                    "llm2_output_path": generation_result.llm2_output_path,
+                },
+                ensure_ascii=False,
+            ),
+        )
+
     refined_text = append_citations(generation_result.refined_report, actions)
     # A preview SMS body is useful for end-to-end grasp; use a dummy link
     base_url = os.environ.get(
-        "DETAIL_BASE_URL", "https://example.com/public/briefs"
+        "DETAIL_BASE_URL", "https://parut.com/public/briefs"
     ).rstrip("/")
     sms_body = build_sms(refined_text, link_url=f"{base_url}/preview")
 
