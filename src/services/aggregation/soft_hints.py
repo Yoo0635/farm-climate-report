@@ -51,13 +51,16 @@ def compute_weather_insights(
         # 3. 기상 스트레스 요인 측정 (극한 온도/강풍/무강수)
         "weather_stress_measurements": _assess_crop_stress(hourly, daily),
         
-        # 4. 주요 기상 이벤트 타임라인
+        # 4. 일사량 측정 (광합성/증산작용 관련)
+        "solar_radiation_measurements": _measure_solar_radiation(hourly, daily),
+        
+        # 5. 주요 기상 이벤트 타임라인
         "weather_events": _extract_weather_events(daily, hourly, warnings),
         
-        # 5. 일별 기상 조건 요약
+        # 6. 일별 기상 조건 요약
         "daily_conditions": _calculate_daily_suitability(daily, hourly),
         
-        # 6. 3일/7일/10일 기상 트렌드
+        # 7. 3일/7일/10일 기상 트렌드
         "trend_analysis": _analyze_weather_trends(daily),
     }
 
@@ -342,6 +345,63 @@ def _assess_crop_stress(hourly: list[ClimateHourly], daily: list[ClimateDaily]) 
     measurements["precipitation"]["consecutive_dry_days"] = max_dry_run
     
     return measurements
+
+
+def _measure_solar_radiation(hourly: list[ClimateHourly], daily: list[ClimateDaily]) -> dict[str, Any]:
+    """일사량 측정 (광합성/증산작용 관련, Open-Meteo 데이터)
+    
+    측정 항목:
+    - 일별 일사량 합계 (MJ/m²)
+    - 시간대별 일사량 구간 (약광/보통/강광/매우 강한 광)
+    - 일조 시간 (일사량 > 120 W/m²)
+    """
+    # 날짜별로 그룹화
+    hourly_by_date: dict[str, list[ClimateHourly]] = defaultdict(list)
+    for entry in hourly[:72]:  # 3일간
+        if entry.swrad_wm2 is not None:  # Open-Meteo 데이터만
+            hourly_by_date[entry.ts.date().isoformat()].append(entry)
+    
+    daily_summaries = []
+    
+    for day_str, hours in sorted(hourly_by_date.items()):
+        # 일사량 구간별 시간 (W/m²)
+        # 참고: 맑은 날 정오 ~800-1000 W/m², 흐린 날 ~100-300 W/m²
+        radiation_bands = {
+            "dark_0_50": len([h for h in hours if h.swrad_wm2 and h.swrad_wm2 < 50]),
+            "dim_50_200": len([h for h in hours if h.swrad_wm2 and 50 <= h.swrad_wm2 < 200]),
+            "moderate_200_500": len([h for h in hours if h.swrad_wm2 and 200 <= h.swrad_wm2 < 500]),
+            "bright_500_800": len([h for h in hours if h.swrad_wm2 and 500 <= h.swrad_wm2 < 800]),
+            "very_bright_800_plus": len([h for h in hours if h.swrad_wm2 and h.swrad_wm2 >= 800]),
+        }
+        
+        # 일조 시간 (일사량 > 120 W/m² 기준)
+        sunshine_hours = len([h for h in hours if h.swrad_wm2 and h.swrad_wm2 > 120])
+        
+        # 일 누적 일사량 (W/m² → MJ/m² 변환: × 3600 / 1,000,000)
+        total_radiation_wh = sum(h.swrad_wm2 for h in hours if h.swrad_wm2)
+        total_radiation_mj = round(total_radiation_wh * 3.6 / 1000, 2) if total_radiation_wh else None
+        
+        # 평균 일사량
+        avg_radiation = round(sum(h.swrad_wm2 for h in hours if h.swrad_wm2) / len(hours), 1) if hours else None
+        
+        # 최대 일사량
+        max_radiation = max((h.swrad_wm2 for h in hours if h.swrad_wm2), default=None)
+        
+        daily_summaries.append({
+            "date": day_str,
+            "total_hours_measured": len(hours),
+            "radiation_bands": radiation_bands,
+            "sunshine_hours": sunshine_hours,
+            "total_radiation_mj_m2": total_radiation_mj,
+            "avg_radiation_wm2": avg_radiation,
+            "max_radiation_wm2": max_radiation,
+        })
+    
+    return {
+        "daily": daily_summaries,
+        "data_source": "Open-Meteo",
+        "note": "일사량이 없으면 Open-Meteo 데이터 미수신"
+    }
 
 
 def _extract_weather_events(

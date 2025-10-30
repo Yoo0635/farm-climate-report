@@ -122,6 +122,23 @@ async def main():
     print(f"  강수:")
     print(f"    무강수일: {precip.get('dry_days', 0)}일 (연속 {precip.get('consecutive_dry_days', 0)}일)")
     
+    # 일사량 측정
+    print(f"\n☀️  [일사량 측정] (광합성/증산작용, Open-Meteo)")
+    solar = insights.get("solar_radiation_measurements", {})
+    solar_daily = solar.get("daily", [])
+    if solar_daily:
+        for s in solar_daily[:3]:  # 처음 3일
+            print(f"  {s['date']}:")
+            print(f"    일조 시간: {s['sunshine_hours']}시간 (>120 W/m²)")
+            print(f"    누적 일사량: {s['total_radiation_mj_m2']} MJ/m²")
+            print(f"    평균/최대: {s['avg_radiation_wm2']} / {s['max_radiation_wm2']} W/m²")
+            print(f"    일사 구간: 어두움({s['radiation_bands']['dark_0_50']}h), "
+                  f"약광({s['radiation_bands']['dim_50_200']}h), "
+                  f"보통({s['radiation_bands']['moderate_200_500']}h), "
+                  f"강광({s['radiation_bands']['bright_500_800']}h)")
+    else:
+        print(f"  데이터 없음 - {solar.get('note', 'Open-Meteo 미수신')}")
+    
     # 주요 기상 이벤트
     print(f"\n⚠️  [주요 기상 이벤트 타임라인]")
     events = insights.get("weather_events", [])
