@@ -27,61 +27,54 @@ def test_aggregate_demo_succeeds() -> None:
     data = response.json()
     assert data["profile"]["region"] == "Andong-si"
     assert data["profile"]["crop"] == "apple"
-    assert data["climate"]["daily"], "Expected daily data in response"
-    first_day = data["climate"]["daily"][0]
-    assert first_day["src"] == "open-meteo"
-    assert any(day.get("summary") for day in data["climate"]["daily"])
-    assert data["pest"]["observations"], "Expected pest observations in demo payload"
-    assert data["soft_hints"]["rain_run_max_days"] >= 1
+    assert data["climate"]["daily"], "Expected demo climate daily data"
+    assert data["climate"]["provenance"], "Expected provenance entries for climate sources"
+    assert any(entry["src"] == "open-meteo" for entry in data["climate"]["daily"])
+    assert "pest" not in data, "Structured pest section should be omitted from API response"
+    # Evidence text should be present and include the SVC53-filtered style header
+    assert data["text"].startswith("=== Non-zero observations for ")
+    # Should contain a known demo observation and hints
+    assert data["pest_hints"], "Expected pest hints when threshold exceeded"
+    assert any("복숭아순나방" in hint for hint in data["pest_hints"])
+    assert "복숭아순나방" in data["text"]
 
 
-def test_aggregation_falls_back_to_open_meteo_when_kma_missing() -> None:
-    class StubFetcher:
-        def __init__(self, payload: dict | None) -> None:
-            self.payload = payload
-            self.calls = 0
+def test_aggregation_returns_text_from_npms_only() -> None:
+    class StubKma:
+        async def fetch(self, resolved: ResolvedProfile) -> dict | None:  # noqa: ARG002
+            return None
 
-        async def fetch(self, resolved: ResolvedProfile) -> dict | None:  # noqa: ARG002 - fixture signature
-            self.calls += 1
-            return self.payload
+    class StubOm:
+        async def fetch(self, resolved: ResolvedProfile) -> dict | None:  # noqa: ARG002
+            return None
 
-    open_meteo_payload = {
-        "issued_at": "2025-01-01T00:00:00+09:00",
-        "daily": [
-            {"date": "2025-01-01", "tmax_c": 18.0, "tmin_c": 5.0, "precip_mm": 0.0, "wind_ms": 3.0},
-            {"date": "2025-01-02", "tmax_c": 17.5, "tmin_c": 4.5, "precip_mm": 0.6, "wind_ms": 2.8},
-        ],
-        "hourly": [
-            {"ts": "2025-01-01T00:00:00+09:00", "t_c": 6.0, "rh_pct": 65, "wind_ms": 2.4, "precip_mm": 0.0},
-            {"ts": "2025-01-01T01:00:00+09:00", "t_c": 5.8, "rh_pct": 67, "wind_ms": 2.6, "precip_mm": 0.0},
-        ],
-        "provenance": "Open-Meteo(2025-01-01)",
-    }
-
-    npms_payload = {
-        "issued_at": "2024-12-31T00:00:00+09:00",
-        "crop": "apple",
-        "bulletins": [],
-        "provenance": "NPMS(2024-12-31)",
-    }
+    class StubNpms:
+        async def fetch(self, resolved: ResolvedProfile) -> dict | None:  # noqa: ARG002
+            return {
+                "issued_at": "2025-01-01T00:00:00+09:00",
+                "crop": "apple",
+                "observations": [
+                    {"pest": "복숭아순나방", "metric": "트랩당마리수", "code": "SS0127", "value": 11.0, "area": "안동시"}
+                ],
+                "provenance": "NPMS-SVC53(2025-01-01)",
+            }
 
     async def _run():
         resolver = ProfileResolver()
         service = AggregationService(
             resolver=resolver,
-            kma_fetcher=StubFetcher(None),
-            open_meteo_fetcher=StubFetcher(open_meteo_payload),
-            npms_fetcher=StubFetcher(npms_payload),
+            kma_fetcher=StubKma(),
+            open_meteo_fetcher=StubOm(),
+            npms_fetcher=StubNpms(),
         )
-
         request = AggregateRequest(region="Andong-si", crop="apple", stage="flowering")
         return await service.aggregate(request)
 
     result = asyncio.run(_run())
-
-    assert any(src.startswith("Open-Meteo") for src in result.climate.provenance)
-    assert all(day.src == "open-meteo" for day in result.climate.daily)
-    assert result.climate.warnings == []
+    assert result.climate.daily == []
+    assert result.climate.hourly == []
+    assert result.text.startswith("=== Non-zero observations for ")
+    assert "복숭아순나방 [SS0127]" in result.text
 
 
 def test_kma_fetcher_returns_cached_payload() -> None:

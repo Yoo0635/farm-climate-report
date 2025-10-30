@@ -108,6 +108,13 @@ def _build_andong_apple() -> DemoBundle:
                 "value": 0.0,
                 "area": "안동시",
             },
+            {
+                "pest": "복숭아순나방",
+                "metric": "트랩당마리수",
+                "code": "SS0127",
+                "value": 12.5,
+                "area": "안동시",
+            },
         ],
         "provenance": ["NPMS(2025-10-29)", "NPMS-SVC53(2025-10-29)"],
     }

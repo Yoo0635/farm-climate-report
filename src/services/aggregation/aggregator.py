@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import logging
 from datetime import date, datetime, timedelta
 from typing import Iterable
@@ -22,6 +23,7 @@ from src.services.aggregation.models import (
     PestSection,
     WeatherWarning,
 )
+from src.services.aggregation.pest_hints import compute_pest_hints
 from src.services.aggregation.resolver import ProfileResolver
 from src.services.aggregation.soft_hints import compute_soft_hints
 
@@ -46,76 +48,146 @@ class AggregationService:
 
     async def aggregate(self, payload: AggregateRequest) -> AggregateEvidencePack:
         profile = AggregateProfile(region=payload.region, crop=payload.crop, stage=payload.stage)
+        resolved = self._resolver.resolve(profile)
 
+        # DEMO: build from scripted bundle so we can showcase full climate+pest output offline.
         if payload.demo:
             bundle = get_demo_bundle(profile.region, profile.crop)
             if not bundle:
                 raise ValueError(f"No demo data for profile {profile.region}/{profile.crop}")
-            return self._assemble(profile, bundle.kma, bundle.open_meteo, bundle.npms)
+            kma_norm = self._normalize_kma(bundle.kma)
+            om_norm = self._normalize_open_meteo(bundle.open_meteo)
+            npms_norm = self._normalize_npms(bundle.npms, profile)
+            climate = self._build_climate_section(
+                base_date=self._determine_base_date(om_norm, kma_norm),
+                kma_norm=kma_norm,
+                open_meteo_norm=om_norm,
+            )
+            text = self._format_npms_text(npms_norm, region_code=resolved.npms_region_code)
+            pest_hints = compute_pest_hints(npms_norm.observations)
+            issued_at = self._select_issued_at(
+                kma_norm.issued_at,
+                om_norm.issued_at,
+                _coerce_datetime(bundle.npms.get("issued_at")) if isinstance(bundle.npms, dict) else None,
+            )
+            soft_hints = compute_soft_hints(climate.daily, climate.hourly, climate.warnings) if (
+                climate.daily or climate.hourly or climate.warnings
+            ) else None
+            return AggregateEvidencePack(
+                profile=profile,
+                issued_at=issued_at,
+                climate=climate,
+                pest=npms_norm,
+                text=text,
+                pest_hints=pest_hints,
+                soft_hints=soft_hints,
+            )
 
-        resolved = self._resolver.resolve(profile)
+        # LIVE: fetch KMA, Open-Meteo, and NPMS in parallel with graceful degradation.
         kma_task = asyncio.create_task(self._kma.fetch(resolved))
         om_task = asyncio.create_task(self._open_meteo.fetch(resolved))
         npms_task = asyncio.create_task(self._npms.fetch(resolved))
 
-        kma_data, om_data, npms_data = await asyncio.gather(kma_task, om_task, npms_task, return_exceptions=True)
+        kma_raw, om_raw, npms_raw = await asyncio.gather(
+            kma_task,
+            om_task,
+            npms_task,
+            return_exceptions=True,
+        )
 
-        errors: list[str] = []
-        if isinstance(kma_data, Exception):
-            errors.append(f"KMA: {kma_data}")
-            kma_data = None
-        if isinstance(om_data, Exception):
-            errors.append(f"Open-Meteo: {om_data}")
-            om_data = None
-        if isinstance(npms_data, Exception):
-            errors.append(f"NPMS: {npms_data}")
-            npms_data = None
+        if isinstance(kma_raw, Exception):
+            logger.warning("KMA fetch failed: %s", kma_raw)
+            kma_raw = None
+        if isinstance(om_raw, Exception):
+            logger.warning("Open-Meteo fetch failed: %s", om_raw)
+            om_raw = None
+        if isinstance(npms_raw, Exception):
+            logger.warning("NPMS fetch failed: %s", npms_raw)
+            npms_raw = None
 
-        if errors:
-            logger.warning("Aggregation fetch errors detected", extra={"errors": errors})
+        kma_norm = self._normalize_kma(kma_raw if isinstance(kma_raw, dict) else None)
+        om_norm = self._normalize_open_meteo(om_raw if isinstance(om_raw, dict) else None)
+        npms_norm = self._normalize_npms(npms_raw if isinstance(npms_raw, dict) else None, profile)
 
-        if not kma_data and not om_data:
-            raise RuntimeError("Failed to fetch climate data from both KMA and Open-Meteo.")
+        climate = self._build_climate_section(
+            base_date=self._determine_base_date(om_norm, kma_norm),
+            kma_norm=kma_norm,
+            open_meteo_norm=om_norm,
+        )
+        text = self._format_npms_text(npms_norm, region_code=resolved.npms_region_code)
+        pest_hints = compute_pest_hints(npms_norm.observations)
+        issued_at = self._select_issued_at(
+            kma_norm.issued_at,
+            om_norm.issued_at,
+            _coerce_datetime(npms_raw.get("issued_at")) if isinstance(npms_raw, dict) else None,
+        )
+        soft_hints = compute_soft_hints(climate.daily, climate.hourly, climate.warnings) if (
+            climate.daily or climate.hourly or climate.warnings
+        ) else None
 
-        return self._assemble(profile, kma_data, om_data, npms_data)
+        return AggregateEvidencePack(
+            profile=profile,
+            issued_at=issued_at,
+            climate=climate,
+            pest=npms_norm,
+            text=text,
+            pest_hints=pest_hints,
+            soft_hints=soft_hints,
+        )
 
-    def _assemble(
+    def _determine_base_date(self, open_meteo_norm: _NormalizedSource, kma_norm: _NormalizedSource) -> date:
+        if open_meteo_norm.daily:
+            return open_meteo_norm.daily[0].date
+        if kma_norm.daily:
+            return kma_norm.daily[0].date
+        return datetime.now(tz=KST).date()
+
+    def _build_climate_section(
         self,
-        profile: AggregateProfile,
-        kma_raw: dict | None,
-        open_meteo_raw: dict | None,
-        npms_raw: dict | None,
-    ) -> AggregateEvidencePack:
-        kma_norm = self._normalize_kma(kma_raw)
-        om_norm = self._normalize_open_meteo(open_meteo_raw)
-        npms_norm = self._normalize_npms(npms_raw, profile)
-
-        issued_candidates = [dt for dt in (kma_norm.issued_at, om_norm.issued_at) if dt is not None]
-        issued_at = max(issued_candidates) if issued_candidates else datetime.now(tz=KST)
-
-        daily = self._merge_daily(issued_at.date(), kma_norm.daily, om_norm.daily)
-        hourly = self._merge_hourly(kma_norm.hourly, om_norm.hourly)
+        *,
+        base_date: date,
+        kma_norm: _NormalizedSource,
+        open_meteo_norm: _NormalizedSource,
+    ) -> ClimateSection:
+        daily = (
+            self._merge_daily(base_date, kma_norm.daily, open_meteo_norm.daily)
+            if (kma_norm.daily or open_meteo_norm.daily)
+            else []
+        )
+        hourly = self._merge_hourly(kma_norm.hourly, open_meteo_norm.hourly)
         warnings = kma_norm.warnings
-        provenance = [p for p in (kma_norm.provenance, om_norm.provenance) if p]
-
-        climate = ClimateSection(
-            horizon_days=max(len(daily) - 1, 0),
+        provenance: list[str] = []
+        if kma_norm.provenance:
+            provenance.append(kma_norm.provenance)
+        if open_meteo_norm.provenance:
+            provenance.append(open_meteo_norm.provenance)
+        horizon = max(0, len(daily) - 1) if daily else 0
+        return ClimateSection(
+            horizon_days=horizon,
             daily=daily,
             hourly=hourly,
             warnings=warnings,
             provenance=provenance,
         )
 
-        pest = npms_norm
-        soft_hints = compute_soft_hints(daily=daily, hourly=hourly, warnings=warnings)
+    def _select_issued_at(self, *candidates: datetime | None) -> datetime:
+        valid = [dt for dt in candidates if dt is not None]
+        if valid:
+            return max(valid)
+        return datetime.now(tz=KST)
 
-        return AggregateEvidencePack(
-            profile=profile,
-            issued_at=issued_at,
-            climate=climate,
-            pest=pest,
-            soft_hints=soft_hints,
-        )
+    def _format_npms_text(self, pest: PestSection, *, region_code: str | None) -> str:
+        target_name = "안동시"
+        target_code = os.environ.get("NPMS_TARGET_SIGUNGU_CODE") or (region_code[:4] if region_code else "-")
+        header = f"=== Non-zero observations for {target_name} ({target_code}) ==="
+        lines: list[str] = [header]
+        if not pest.observations:
+            lines.append("(none)")
+            return "\n".join(lines)
+        for idx, o in enumerate(pest.observations, start=1):
+            value_str = "" if o.value is None else f"{o.value}"
+            lines.append(f"{idx}. {o.pest} [{o.code}] = {value_str} (area: {o.area})")
+        return "\n".join(lines)
 
     def _normalize_kma(self, data: dict | None):
         issued_at: datetime | None = None

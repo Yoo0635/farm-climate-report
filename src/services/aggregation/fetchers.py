@@ -46,7 +46,7 @@ class BaseFetcher:
 
 
 class KmaFetcher(BaseFetcher):
-    """Mid-term land forecast + (stubbed) warnings from KMA API Hub."""
+    """Mid-term land/temperature forecast + short-term forecast + warnings from KMA API Hub."""
 
     def __init__(self, auth_key: str | None = None) -> None:
         super().__init__(ttl_seconds=60 * 60, maxsize=16)
@@ -62,8 +62,39 @@ class KmaFetcher(BaseFetcher):
         if not auth_key:
             logger.warning("KMA fetch skipped — API key not configured")
             return None
+
+        # 병렬로 3개 API 호출
+        mid_land_task = asyncio.create_task(self._fetch_mid_land(resolved, auth_key))
+        mid_ta_task = asyncio.create_task(self._fetch_mid_ta(resolved, auth_key))
+        short_task = asyncio.create_task(self._fetch_short(resolved, auth_key))
+
+        mid_land, mid_ta, short = await asyncio.gather(mid_land_task, mid_ta_task, short_task, return_exceptions=True)
+
+        # 에러 처리
+        if isinstance(mid_land, Exception):
+            logger.warning("KMA MidLand fetch failed: %s", mid_land)
+            mid_land = None
+        if isinstance(mid_ta, Exception):
+            logger.warning("KMA MidTa fetch failed: %s", mid_ta)
+            mid_ta = None
+        if isinstance(short, Exception):
+            logger.warning("KMA Short fetch failed: %s", short)
+            short = None
+
+        # 최소 하나라도 성공해야 함
+        if not mid_land and not mid_ta and not short:
+            logger.warning("All KMA API calls failed for region=%s", resolved.profile.region)
+            return None
+
+        # 데이터 병합
+        merged = self._merge_kma_data(mid_land, mid_ta, short)
+        self._cache[key] = merged
+        return merged
+
+    async def _fetch_mid_land(self, resolved: ResolvedProfile, auth_key: str) -> dict | None:
+        """중기육상예보 (4~10일 날씨 설명)"""
         if not resolved.kma_area_code:
-            logger.warning("KMA fetch skipped — profile lacks kma_area_code (region=%s crop=%s)", resolved.profile.region, resolved.profile.crop)
+            logger.warning("KMA MidLand skipped — profile lacks kma_area_code")
             return None
 
         client = await self._get_client()
@@ -81,25 +112,121 @@ class KmaFetcher(BaseFetcher):
                 response = await client.get(endpoint, params=params)
                 response.raise_for_status()
             except httpx.HTTPError as exc:
-                logger.warning("KMA MidFcst request failed (tmFc=%s, area=%s): %s", params["tmFc"], resolved.kma_area_code, exc)
+                logger.warning("KMA MidLand request failed (tmFc=%s, area=%s): %s", params["tmFc"], resolved.kma_area_code, exc)
                 continue
 
             try:
                 payload = response.json()
             except ValueError as exc:  # pragma: no cover - defensive guard
-                logger.warning("KMA MidFcst returned non-JSON payload (tmFc=%s): %s", params["tmFc"], exc)
+                logger.warning("KMA MidLand returned non-JSON payload (tmFc=%s): %s", params["tmFc"], exc)
                 continue
 
             parsed = self._parse_mid_land(payload, tmfc_dt, resolved.kma_area_code)
             if parsed is None:
                 continue
 
-            parsed["provenance"] = parsed.get("provenance") or f"KMA({tmfc_dt.date().isoformat()})"
-            self._cache[key] = parsed
+            parsed["provenance"] = parsed.get("provenance") or f"KMA-MidLand({tmfc_dt.date().isoformat()})"
             return parsed
 
-        logger.warning("KMA MidFcst yielded no usable data for area %s", resolved.kma_area_code)
+        logger.warning("KMA MidLand yielded no usable data for area %s", resolved.kma_area_code)
         return None
+
+    async def _fetch_mid_ta(self, resolved: ResolvedProfile, auth_key: str) -> dict | None:
+        """중기기온예보 (3~10일 기온 - 시군구 단위)"""
+        # kma_area_code를 그대로 사용 (시군구 코드 지원)
+        if not resolved.kma_area_code:
+            logger.warning("KMA MidTa skipped — profile lacks kma_area_code")
+            return None
+
+        client = await self._get_client()
+        endpoint = f"{self._base_url}/MidFcstInfoService/getMidTa"
+        for tmfc_dt in self._candidate_tmfc():
+            params = {
+                "authKey": auth_key,
+                "dataType": "JSON",
+                "pageNo": "1",
+                "numOfRows": "50",
+                "regId": resolved.kma_area_code,
+                "tmFc": tmfc_dt.strftime("%Y%m%d%H%M"),
+            }
+            try:
+                response = await client.get(endpoint, params=params)
+                response.raise_for_status()
+            except httpx.HTTPError as exc:
+                logger.warning("KMA MidTa request failed (tmFc=%s, area=%s): %s", params["tmFc"], resolved.kma_area_code, exc)
+                continue
+
+            try:
+                payload = response.json()
+            except ValueError as exc:
+                logger.warning("KMA MidTa returned non-JSON payload (tmFc=%s): %s", params["tmFc"], exc)
+                continue
+
+            parsed = self._parse_mid_ta(payload, tmfc_dt, resolved.kma_area_code)
+            if parsed is None:
+                continue
+
+            parsed["provenance"] = parsed.get("provenance") or f"KMA-MidTa({tmfc_dt.date().isoformat()})"
+            return parsed
+
+        logger.warning("KMA MidTa yielded no usable data for area %s", resolved.kma_area_code)
+        return None
+
+    async def _fetch_short(self, resolved: ResolvedProfile, auth_key: str) -> dict | None:
+        """단기예보 (0~3일 격자 예보)"""
+        if not resolved.kma_grid:
+            logger.warning("KMA Short skipped — profile lacks kma_grid coordinates")
+            return None
+
+        client = await self._get_client()
+        endpoint = f"{self._base_url}/VilageFcstInfoService_2.0/getVilageFcst"
+        
+        # 발표 시각 계산 (0200, 0500, 0800, 1100, 1400, 1700, 2000, 2300)
+        now = datetime.now(tz=KST)
+        base_times = ["2300", "2000", "1700", "1400", "1100", "0800", "0500", "0200"]
+        base_date = now.date()
+        base_time = None
+        
+        for bt in base_times:
+            candidate_dt = datetime.combine(base_date, datetime.strptime(bt, "%H%M").time(), tzinfo=KST)
+            if candidate_dt <= now:
+                base_time = bt
+                break
+        
+        if not base_time:  # 자정 이전이면 전날 2300 사용
+            base_date = base_date - timedelta(days=1)
+            base_time = "2300"
+
+        params = {
+            "authKey": auth_key,
+            "dataType": "JSON",
+            "pageNo": "1",
+            "numOfRows": "1000",
+            "base_date": base_date.strftime("%Y%m%d"),
+            "base_time": base_time,
+            "nx": str(resolved.kma_grid["nx"]),
+            "ny": str(resolved.kma_grid["ny"]),
+        }
+        
+        try:
+            response = await client.get(endpoint, params=params)
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            logger.warning("KMA Short request failed (date=%s time=%s): %s", params["base_date"], params["base_time"], exc)
+            return None
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            logger.warning("KMA Short returned non-JSON payload: %s", exc)
+            return None
+
+        parsed = self._parse_short(payload, base_date, base_time)
+        if parsed is None:
+            return None
+
+        parsed["provenance"] = parsed.get("provenance") or f"KMA-Short({base_date.isoformat()})"
+        return parsed
 
     def _candidate_tmfc(self) -> list[datetime]:
         """Return candidate publication timestamps (latest first)."""
@@ -196,6 +323,196 @@ class KmaFetcher(BaseFetcher):
         if chance_values:
             entry["precip_probability_pct"] = round(sum(chance_values) / len(chance_values), 1)
         return entry
+
+    def _parse_mid_ta(self, payload: dict[str, Any], tmfc_dt: datetime, reg_id: str) -> dict | None:
+        """중기기온예보 파싱 (3~10일 기온)"""
+        response = payload.get("response")
+        if not isinstance(response, dict):
+            return None
+        header = response.get("header") or {}
+        if header.get("resultCode") != "00":
+            logger.info("KMA MidTa returned resultCode=%s message=%s", header.get("resultCode"), header.get("resultMsg"))
+            return None
+
+        body = response.get("body") or {}
+        items = body.get("items")
+        records: Iterable[dict[str, Any]] = ()
+        if isinstance(items, dict):
+            item = items.get("item")
+            if isinstance(item, list):
+                records = item
+            elif isinstance(item, dict):
+                records = [item]
+        elif isinstance(items, list):
+            records = items
+
+        target: dict[str, Any] | None = None
+        for record in records or []:
+            if str(record.get("regId")) == str(reg_id):
+                target = record
+                break
+        if target is None and records:
+            target = next(iter(records))
+        if target is None:
+            return None
+
+        daily: list[dict[str, Any]] = []
+        for day in range(3, 11):
+            tmin = _to_float(target.get(f"taMin{day}"))
+            tmax = _to_float(target.get(f"taMax{day}"))
+            if tmin is None and tmax is None:
+                continue
+            forecast_date = (tmfc_dt + timedelta(days=day - 1)).date().isoformat()
+            daily.append({
+                "date": forecast_date,
+                "tmin_c": tmin,
+                "tmax_c": tmax,
+            })
+
+        return {
+            "issued_at": tmfc_dt.isoformat(),
+            "daily": daily,
+            "hourly": [],
+            "warnings": [],
+        }
+
+    def _parse_short(self, payload: dict[str, Any], base_date: date, base_time: str) -> dict | None:
+        """단기예보 파싱 (0~3일 격자 예보)"""
+        response = payload.get("response")
+        if not isinstance(response, dict):
+            return None
+        header = response.get("header") or {}
+        if header.get("resultCode") != "00":
+            logger.info("KMA Short returned resultCode=%s message=%s", header.get("resultCode"), header.get("resultMsg"))
+            return None
+
+        body = response.get("body") or {}
+        items = body.get("items")
+        records: Iterable[dict[str, Any]] = ()
+        if isinstance(items, dict):
+            item = items.get("item")
+            if isinstance(item, list):
+                records = item
+            elif isinstance(item, dict):
+                records = [item]
+        elif isinstance(items, list):
+            records = items
+
+        if not records:
+            return None
+
+        # 시간대별로 그룹화 (fcstDate + fcstTime)
+        hourly_data: dict[str, dict[str, Any]] = {}
+        for record in records:
+            fcst_date = record.get("fcstDate")
+            fcst_time = record.get("fcstTime")
+            category = record.get("category")
+            fcst_value = record.get("fcstValue")
+            
+            if not fcst_date or not fcst_time or not category:
+                continue
+            
+            key = f"{fcst_date}{fcst_time}"
+            if key not in hourly_data:
+                hourly_data[key] = {"date": fcst_date, "time": fcst_time}
+            
+            hourly_data[key][category] = fcst_value
+
+        # 시간별 데이터 변환
+        hourly: list[dict[str, Any]] = []
+        for key in sorted(hourly_data.keys())[:72]:  # 72시간만
+            data = hourly_data[key]
+            try:
+                ts = datetime.strptime(f"{data['date']} {data['time']}", "%Y%m%d %H%M").replace(tzinfo=KST)
+            except ValueError:
+                continue
+            
+            hourly.append({
+                "ts": ts.isoformat(),
+                "t_c": _to_float(data.get("TMP")),  # 기온
+                "rh_pct": _to_float(data.get("REH")),  # 습도
+                "precip_mm": _to_float(data.get("PCP")),  # 1시간 강수량
+                "wind_ms": _to_float(data.get("WSD")),  # 풍속 (m/s)
+                "sky": data.get("SKY"),  # 하늘상태 (1맑음 3구름많음 4흐림)
+                "pty": data.get("PTY"),  # 강수형태 (0없음 1비 2비/눈 3눈 4소나기)
+            })
+
+        issued_at = datetime.combine(base_date, datetime.strptime(base_time, "%H%M").time(), tzinfo=KST)
+        return {
+            "issued_at": issued_at.isoformat(),
+            "daily": [],
+            "hourly": hourly,
+            "warnings": [],
+        }
+
+    def _merge_kma_data(self, mid_land: dict | None, mid_ta: dict | None, short: dict | None) -> dict:
+        """3개 KMA API 데이터 병합"""
+        # 가장 최신 발표 시각 사용
+        issued_candidates = []
+        if mid_land:
+            issued_candidates.append(_coerce_datetime(mid_land.get("issued_at")))
+        if mid_ta:
+            issued_candidates.append(_coerce_datetime(mid_ta.get("issued_at")))
+        if short:
+            issued_candidates.append(_coerce_datetime(short.get("issued_at")))
+        
+        issued_at = max(dt for dt in issued_candidates if dt is not None) if issued_candidates else datetime.now(tz=KST)
+
+        # Daily 데이터 병합: mid_land(날씨 설명) + mid_ta(기온)
+        daily_map: dict[str, dict[str, Any]] = {}
+        
+        if mid_land:
+            for entry in mid_land.get("daily", []):
+                date_key = entry.get("date")
+                if date_key:
+                    daily_map[date_key] = entry.copy()
+        
+        if mid_ta:
+            for entry in mid_ta.get("daily", []):
+                date_key = entry.get("date")
+                if not date_key:
+                    continue
+                if date_key in daily_map:
+                    # 기존 항목에 기온 추가
+                    daily_map[date_key]["tmin_c"] = entry.get("tmin_c")
+                    daily_map[date_key]["tmax_c"] = entry.get("tmax_c")
+                else:
+                    # 새 항목
+                    daily_map[date_key] = entry.copy()
+        
+        daily = [daily_map[key] for key in sorted(daily_map.keys())]
+
+        # Hourly 데이터: short만 사용
+        hourly = short.get("hourly", []) if short else []
+
+        # Provenance 수집
+        # Consolidated provenance label (stable alias expected by callers/tests)
+        provenance = f"KMA({issued_at.date().isoformat()})"
+
+        return {
+            "issued_at": issued_at.isoformat(),
+            "daily": daily,
+            "hourly": hourly,
+            "warnings": [],
+            "provenance": provenance,
+        }
+
+
+def _coerce_datetime(value) -> datetime | None:  # noqa: ANN001 - dynamic typing for coercion
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        try:
+            dt = datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=KST)
+    else:
+        dt = dt.astimezone(KST)
+    return dt
 
 
 class OpenMeteoFetcher(BaseFetcher):
@@ -326,6 +643,7 @@ class NpmsFetcher(BaseFetcher):
         self._predict_code = os.environ.get("NPMS_DEFAULT_PREDICT_CODE", "00209")
         self._svc51_type = os.environ.get("NPMS_SVC51_TYPE", "AA003")
         self._svc53_type = os.environ.get("NPMS_SVC53_TYPE", "AA003")
+        self._default_insect_key = os.environ.get("NPMS_DEFAULT_INSECT_KEY", "202500209FT01060101322008")
 
     async def fetch(self, resolved: ResolvedProfile) -> dict | None:
         key = self._cache_key(resolved)
@@ -432,38 +750,45 @@ class NpmsFetcher(BaseFetcher):
         api_key: str,
         crop_code: str,
     ) -> str | None:
+        # SVC51: 병해충예찰검색 목록에서 insectKey 조회
+        year = os.environ.get("NPMS_SVC51_YEAR")
+        if not year:
+            # 기본값: 현재 연도
+            year = str(datetime.now(tz=KST).year)
         params = {
             "apiKey": api_key,
             "serviceCode": "SVC51",
             "serviceType": self._svc51_type,
+            "searchExaminYear": year,
+            # 관찰포(센터) 코드가 주어지면 우선 필터링
+            "searchPredictnSpchcknCode": self._predict_code or "",
             "searchKncrCode": crop_code,
             "displayCount": "50",
             "startPoint": "1",
         }
-
         payload = await self._request_json(client, params)
-        if payload is None:
-            return None
+        if payload:
+            service = payload.get("service") or {}
+            entries = service.get("list") or []
+            if isinstance(entries, dict):
+                entries = [entries]
+            if entries:
+                filtered = []
+                for entry in entries:
+                    if self._predict_code and entry.get("predictnSpchcknCode") != self._predict_code:
+                        continue
+                    filtered.append(entry)
 
-        service = payload.get("service") or {}
-        entries = service.get("list") or []
-        if isinstance(entries, dict):
-            entries = [entries]
-        if not entries:
-            return None
+                candidates = filtered or entries
+                candidates.sort(key=_svc51_sort_key, reverse=True)
+                for entry in candidates:
+                    insect_key = entry.get("insectKey")
+                    if insect_key:
+                        return insect_key
 
-        filtered = []
-        for entry in entries:
-            if self._predict_code and entry.get("predictnSpchcknCode") != self._predict_code:
-                continue
-            filtered.append(entry)
-
-        candidates = filtered or entries
-        candidates.sort(key=_svc51_sort_key, reverse=True)
-        for entry in candidates:
-            insect_key = entry.get("insectKey")
-            if insect_key:
-                return insect_key
+        if self._default_insect_key:
+            logger.debug("NPMS SVC51 lookup failed; falling back to default insectKey %s", self._default_insect_key)
+            return self._default_insect_key
         return None
 
     async def _request_json(self, client: httpx.AsyncClient, params: dict[str, str]) -> dict[str, Any] | None:
@@ -534,23 +859,28 @@ class NpmsFetcher(BaseFetcher):
             return None
 
         targets = _region_code_variants(region_code)
+        target_name = os.environ.get("NPMS_TARGET_SIGUNGU", "안동시")
         observations: list[dict[str, Any]] = []
         for entry in entries:
             sigungu_code = str(entry.get("sigunguCode") or "").strip()
-            if sigungu_code not in targets:
+            sigungu_nm = _clean_text(entry.get("sigunguNm"))
+            if sigungu_code not in targets and target_name not in sigungu_nm:
                 continue
 
             name = _clean_text(entry.get("dbyhsNm"))
             pest, metric, unit = _split_metric_name(name)
-
+            value = _to_float(entry.get("inqireValue"))
+            # Filter out None/zero values to match filtered probe behavior
+            if value is None or value == 0.0:
+                continue
             observations.append(
                 {
                     "pest": pest,
                     "metric": metric,
                     "unit": unit,
                     "code": _clean_text(entry.get("inqireCnClCode")),
-                    "value": _to_float(entry.get("inqireValue")),
-                    "area": _clean_text(entry.get("sigunguNm")),
+                    "value": value,
+                    "area": sigungu_nm,
                 }
             )
 
@@ -625,6 +955,13 @@ def _parse_npms_segments(config: str) -> list[tuple[str, str, str]]:
 def _select_npms_segment(segments: list[tuple[str, str, str]], index: int) -> tuple[str | None, str | None]:
     if not segments:
         return None, None
+    # 우선 "{index}단계"가 포함된 세그먼트를 찾아본다 (문서 순서가 역순일 수 있음)
+    stage_token = f"{index}단계"
+    for title, body, color in segments:
+        combined = " ".join(part for part in (title, body) if part).strip()
+        if stage_token in combined:
+            return (combined or None), color
+    # 매칭 실패 시, 보수적으로 인덱스에 해당하는 위치를 사용 (1-based)
     clamped = max(1, min(index, len(segments)))
     title, body, color = segments[clamped - 1]
     combined = " ".join(part for part in (title, body) if part).strip() or None

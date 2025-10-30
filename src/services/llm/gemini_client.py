@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from google import genai
 
 
-DEFAULT_MODEL = "gemini-flash-lite-latest"
+DEFAULT_MODEL = "gemini-2.5-pro"
 
 
 @dataclass(slots=True)
@@ -33,12 +33,12 @@ class GeminiRefiner:
     def build_prompt(self, detailed_report: str) -> str:
         """Construct the prompt for Gemini refinement."""
         return (
-            "다음 보고서를 한국어로 짧고 이해하기 쉬운 문장으로 정리해 주세요.\n"
+            "당신은 농업 전문가로서, 이 보고서 내용을 현장의 농업인에게 전달하려고 합니다. 아래 보고서를 분석해서, 농장주가 향후 2주간 가장 시급하게 대응해야 할 사항을 중심으로 요약해 주세요. 최대한 간결하게 필요한 내용만 총 130자 내로 작성해주세요.\n"
             "조건:\n"
-            f"- 최대 {self._config.max_sentences}문장\n"
-            "- 각 문장은 40자 내외, 간결한 표현\n"
-            "- 음성 톤: 친절하고 또박또박 안내하는 농촌 상담원\n"
-            "- 날짜/트리거, 행동 3개, 근거(출처+연도) 포함\n\n"
+            f"- 대상: 농사일로 바쁜 농장주가 쉽게 이해할 수 있도록 작성\n"
+            "- 형식: 가장 중요한 순서대로 번호를 매겨 목록으로 정리, 본문만, 마크다운 없이 작성\n"
+            "- 내용: 각 항목에 '무엇을(What)', '언제(When)' 해야 하는지 한 문장으로, 간략하게 작성\n"
+            "- 언어: 전문 용어 대신 쉽고 간결한 표현 사용\n\n"
             "=== 보고서 원문 ===\n"
             f"{detailed_report}\n"
         )

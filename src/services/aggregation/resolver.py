@@ -24,8 +24,8 @@ class ProfileResolver:
             ("andong-si", "apple"): ResolverRecord(
                 lat=36.568,
                 lon=128.729,
-                kma_grid=None,
-                kma_area_code="11H10501",
+                kma_grid={"nx": 91, "ny": 106},  # 안동시 격자 좌표
+                kma_area_code="11H10000",  # 경상북도 중기육상예보 지역코드
                 npms_region_code="47170",
             ),
         }
