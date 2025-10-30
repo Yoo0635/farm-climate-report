@@ -100,6 +100,7 @@ GET http://ncpms.rda.go.kr/npmsAPI/service
 - Responds with `structList` entries per 시군구 (`sigunguNm`, `sigunguCode`).
 - Each entry provides `dbyhsNm` (pest + metric), `inqireCnClCode` (metric code), `inqireValue` (numeric), enabling filtering to a target 시군구 (안동시=4717).
 - Combine SVC31 (risk) + SVC53 (observed values) for richer pest context.
+- For the Andong apple MVP we default to `insectKey=202500209FT01060101322008` (2025 관찰포 8차) when SVC51 lookup fails.
 
 ## 4. Integration Notes
 - The codebase’s `NpmsFetcher` currently:

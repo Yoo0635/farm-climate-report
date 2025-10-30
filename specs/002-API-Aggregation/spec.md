@@ -81,6 +81,7 @@ Keep (decision-driving only):
 > * Bulletins derive from **SVC31** (crop model).  
 > * `observations` derive from **SVC51→SVC53** (예찰 목록 → 예찰 상세).  
 > * For MVP we only resolve `insectKey` for Andong-si apples (predict code `00209`), filtering `sigunguCode` to 안동시.
+> * If SVC51 lookup fails, fall back to `insectKey=202500209FT01060101322008` (2025 관찰포 8차).
 
 ---
 
@@ -99,6 +100,7 @@ Keep (decision-driving only):
 * **KMA mid‑term summaries**: surface as `daily[].summary` and `daily[].precip_probability_pct` when available; do not overwrite numeric fields.
 * **Warnings**: from **KMA** when accessible; otherwise omit (empty array).
 * **Pest observations**: only include SVC53 rows whose `sigunguCode` matches 안동시; surface as `observations` alongside bulletins.
+* **Pest hints**: raise deterministic advisories (non-binding). MVP trigger — 안동시 복숭아순나방(트랩당마리수, code `SS0127`) ≥ 10 → 방제 검토 권장 메시지 with NPMS SVC53 citation.
 * Keep arrays **as provided** (no averaging); annotate each element with `src` where applicable.
 
 ---
@@ -143,6 +145,7 @@ Compute once to help the model, but **never force decisions**:
     "observations":[ {"area":"안동시","pest":"사과굴나방","metric":"트랩당마리수","code":"SS0128","value":93.6} ],
     "provenance":[ "NPMS-SVC31(2025-10-27)", "NPMS-SVC53(2025-10-27)" ]
   },
+  "pest_hints":["안동시 복숭아순나방(트랩당마리수) 17.25마리 관측 — 10마리 이상으로 높음. 살충제 방제 검토를 권장합니다 (출처: NPMS SVC53)."],
   "soft_hints":{
     "rain_run_max_days":2,"heat_hours_ge_33c":6,"wind_hours_ge_10ms":0,"wet_nights_count":1,"diurnal_range_max":12,"first_warning_type":"HEAT"
   }

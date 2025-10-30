@@ -61,8 +61,8 @@ Implementation notes:
 
 3) Resolver + fetchers
 - Add `("andong-si","apple")` record to resolver.
-- NPMS: ensure apple code `FT010601` is supported; parse and map risk indices to LOW/MODERATE/HIGH/ALERT; **resolve SVC51 insectKey and map SVC53
-  안동 observations into structured metrics.**
+- NPMS: ensure apple code `FT010601` is supported; parse and map risk indices to LOW/MODERATE/HIGH/ALERT; **resolve SVC51 insectKey (fallback to
+  202500209FT01060101322008), map SVC53 안동 observations, and surface deterministic pest hints (복숭아순나방 트랩 ≥10).**
 
 4) Merge policy + soft hints
 - Implement Open‑Meteo primary numeric with KMA summary overlay; keep provenance; compute soft hints.

@@ -119,3 +119,4 @@ class AggregateEvidencePack(BaseModel):
     climate: ClimateSection
     pest: PestSection
     soft_hints: SoftHints | None = None
+    pest_hints: list[str] = Field(default_factory=list)

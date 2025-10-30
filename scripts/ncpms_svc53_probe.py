@@ -100,8 +100,16 @@ def _summarize_service(payload: dict[str, Any], *, sigungu_filter: str | None) -
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description="Probe NPMS SVC53 (예찰검색)")
     parser.add_argument("--npms-key", help="NPMS API key (defaults to NPMS_API_KEY env).")
-    parser.add_argument("--insect-key", default=os.environ.get("NPMS_DEFAULT_INSECT_KEY"), help="SVC53 insectKey (상세조회키).")
-    parser.add_argument("--sido-code", default=os.environ.get("NPMS_DEFAULT_SIDO"), help="시도코드 (예: 경북=47).")
+    parser.add_argument(
+        "--insect-key",
+        default=os.environ.get("NPMS_DEFAULT_INSECT_KEY", "202500209FT01060101322008"),
+        help="SVC53 insectKey (상세조회키). Default targets Andong-si apple 관찰포.",
+    )
+    parser.add_argument(
+        "--sido-code",
+        default=os.environ.get("NPMS_DEFAULT_SIDO", "47"),
+        help="시도코드 (예: 경북=47).",
+    )
     parser.add_argument("--service-type", default=os.environ.get("NPMS_SVC53_TYPE", "AA003"), choices=["AA001", "AA003"], help="응답 형식: AA003(JSON) / AA001(XML)")
     parser.add_argument("--show-curl", action="store_true", help="Print a sanitized curl command before request.")
     parser.add_argument("--sigungu", help="Filter results to rows whose sigunguNm contains this text.")

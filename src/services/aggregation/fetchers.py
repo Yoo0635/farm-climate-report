@@ -326,6 +326,7 @@ class NpmsFetcher(BaseFetcher):
         self._predict_code = os.environ.get("NPMS_DEFAULT_PREDICT_CODE", "00209")
         self._svc51_type = os.environ.get("NPMS_SVC51_TYPE", "AA003")
         self._svc53_type = os.environ.get("NPMS_SVC53_TYPE", "AA003")
+        self._default_insect_key = os.environ.get("NPMS_DEFAULT_INSECT_KEY", "202500209FT01060101322008")
 
     async def fetch(self, resolved: ResolvedProfile) -> dict | None:
         key = self._cache_key(resolved)
@@ -432,38 +433,29 @@ class NpmsFetcher(BaseFetcher):
         api_key: str,
         crop_code: str,
     ) -> str | None:
-        params = {
-            "apiKey": api_key,
-            "serviceCode": "SVC51",
-            "serviceType": self._svc51_type,
-            "searchKncrCode": crop_code,
-            "displayCount": "50",
-            "startPoint": "1",
-        }
-
         payload = await self._request_json(client, params)
-        if payload is None:
-            return None
+        if payload:
+            service = payload.get("service") or {}
+            entries = service.get("list") or []
+            if isinstance(entries, dict):
+                entries = [entries]
+            if entries:
+                filtered = []
+                for entry in entries:
+                    if self._predict_code and entry.get("predictnSpchcknCode") != self._predict_code:
+                        continue
+                    filtered.append(entry)
 
-        service = payload.get("service") or {}
-        entries = service.get("list") or []
-        if isinstance(entries, dict):
-            entries = [entries]
-        if not entries:
-            return None
+                candidates = filtered or entries
+                candidates.sort(key=_svc51_sort_key, reverse=True)
+                for entry in candidates:
+                    insect_key = entry.get("insectKey")
+                    if insect_key:
+                        return insect_key
 
-        filtered = []
-        for entry in entries:
-            if self._predict_code and entry.get("predictnSpchcknCode") != self._predict_code:
-                continue
-            filtered.append(entry)
-
-        candidates = filtered or entries
-        candidates.sort(key=_svc51_sort_key, reverse=True)
-        for entry in candidates:
-            insect_key = entry.get("insectKey")
-            if insect_key:
-                return insect_key
+        if self._default_insect_key:
+            logger.debug("NPMS SVC51 lookup failed; falling back to default insectKey %s", self._default_insect_key)
+            return self._default_insect_key
         return None
 
     async def _request_json(self, client: httpx.AsyncClient, params: dict[str, str]) -> dict[str, Any] | None:

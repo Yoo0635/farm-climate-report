@@ -22,6 +22,7 @@ from src.services.aggregation.models import (
     PestSection,
     WeatherWarning,
 )
+from src.services.aggregation.pest_hints import compute_pest_hints
 from src.services.aggregation.resolver import ProfileResolver
 from src.services.aggregation.soft_hints import compute_soft_hints
 
@@ -108,6 +109,7 @@ class AggregationService:
 
         pest = npms_norm
         soft_hints = compute_soft_hints(daily=daily, hourly=hourly, warnings=warnings)
+        pest_hints = compute_pest_hints(pest.observations)
 
         return AggregateEvidencePack(
             profile=profile,
@@ -115,6 +117,7 @@ class AggregationService:
             climate=climate,
             pest=pest,
             soft_hints=soft_hints,
+            pest_hints=pest_hints,
         )
 
     def _normalize_kma(self, data: dict | None):

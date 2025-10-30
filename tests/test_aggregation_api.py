@@ -32,6 +32,8 @@ def test_aggregate_demo_succeeds() -> None:
     assert first_day["src"] == "open-meteo"
     assert any(day.get("summary") for day in data["climate"]["daily"])
     assert data["pest"]["observations"], "Expected pest observations in demo payload"
+    assert data["pest_hints"], "Expected pest hints when threshold exceeded"
+    assert any("복숭아순나방" in hint for hint in data["pest_hints"])
     assert data["soft_hints"]["rain_run_max_days"] >= 1
 
 
